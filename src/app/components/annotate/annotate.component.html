@@ -1,0 +1,35 @@
+<div id="view_container">
+    <div id="header_bar">
+        <div>
+            <div>
+                <button (click)="canvasComponent.reset()">Reset</button>
+            </div>
+            <div>
+                <button (click)="canvasComponent.saveCanvas()">Save</button>
+            </div>
+
+        </div>
+
+    </div>
+    <div id="editor_container">
+        <div id="editor_canvas_container">
+            <!-- <img id="image_preview" [src]="image.previewFilename | dbStaticAsset"> -->
+            <!-- <img id="canvas_background" [src]="((selectedImage$ | async)?.previewFilename || '') | dbStaticAsset"> -->
+            <app-image-viewer [imageData]="(selectedImage$ | async)?.rgb" [selectedMaskId]="selectedMaskId$ | async"
+                [maskOpacity]="state.annotation.maskOpacity$ | async" [visibleMasks]="visibleMasksData$ | async"
+                [imageSizeInfo]="imageMeta$ | async">
+                <ng-content *ngTemplateOutlet="canvasTemplate"></ng-content>
+            </app-image-viewer>
+
+        </div>
+    </div>
+</div>
+
+<ng-template #canvasTemplate>
+    <ng-container *ngIf="imageMeta$ | async as imageMeta">
+        <app-canvas #canvasComponent [imageSizeInfo]="imageMeta" [selectedMask]="selectedMask$ | async"
+            [tool]="state.annotation.tool$ | async" [opacity]="(state.annotation.maskOpacity$ | async) || 1"
+            (updateMaskData)="updateMaskData($event)">
+        </app-canvas>
+    </ng-container>
+</ng-template>

@@ -1,0 +1,14 @@
+<div id="canvas_container" *ngIf="(imageSizeInfo$ | async) as imageInfo"
+    [style.height]="imageInfo?.displayHeight + 'px'" [style.width]="imageInfo?.displayWidth + 'px'">
+    <canvas #canvas id="canvas_bg" [width]="imageInfo?.resolution?.width" [class]="(pointerStyle$ | async)?.class"
+        [style.opacity]="opacity" [height]="imageInfo.resolution.height"></canvas>
+    <canvas #canvas_temp id="canvas_temp" [width]="imageInfo.resolution.width" [style.opacity]="opacity"
+        [height]="imageInfo.resolution.height"></canvas>
+    <div id="brush_cursor" #brushCursor [style.width]="(pointerStyle$ | async)?.size + 'px'"
+        [style.display]="(pointerStyle$ | async)?.class === 'cursor_brush' ? 'block' : 'none'">
+        <svg viewBox="0 0 100 100" stroke="white" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="50" cy="50" r="49" stroke-width="3px" />
+        </svg>
+    </div>
+
+</div>

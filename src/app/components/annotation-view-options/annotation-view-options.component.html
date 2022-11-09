@@ -1,0 +1,35 @@
+<div id="tool_section_header">
+    View Options
+</div>
+<div class="tool_item">
+    <div class="tool_label">
+        Zoom
+    </div>
+    <div class="tool_control custom-slider">
+        <ngx-slider [options]="{ floor: .5, ceil: 5, step:.1 }" [value]=".5" (valueChange)="onZoomSliderChange($event)">
+        </ngx-slider>
+    </div>
+</div>
+<div class="tool_item">
+    <div>Edit Mask:</div>
+    <div>
+        <img id="add_mask_icon" src="/assets/svg/plus_circle.svg" (click)="addMaskButtonClicked()">
+    </div>
+</div>
+<div class="tool_item">
+    <fieldset #maskVisibilityCheckboxes>
+        <legend>Show Masks</legend>
+        <div *ngFor="let mask of maskViewData$ | async; let idx = index" class="mask_picker_container"
+            [class.selected]="mask.selected">
+            <div class="mask_info">
+                <img class="visibility_icon" (click)="onShowMaskSelect(mask.id)"
+                    [src]="mask.selected ? visibilityIcons.visibility_disabled : mask.checked ? visibilityIcons.visible : visibilityIcons.visibility_off">
+                <div class="mask_color_patch" [style.background-color]="mask.color">
+                </div>
+                <label for="mask{{mask.id}}" (click)="maskSelected(mask.id)">Mask {{mask.id}}</label>
+            </div>
+            <img class="trash_icon" src="/assets/svg/trash.svg" (click)="removeMaskButtonClicked(mask)">
+        </div>
+
+    </fieldset>
+</div>

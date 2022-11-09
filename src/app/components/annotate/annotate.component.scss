@@ -1,0 +1,77 @@
+#view_container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    width: 100%
+}
+
+#header_bar {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    padding: 8px;
+
+    div {
+        height: 35px;
+        display: flex;
+        flex-direction: row;
+        margin-bottom: 8px;
+        align-items: baseline;
+
+        >* {
+            display: flex;
+            align-items: baseline;
+            margin-right: 8px;
+
+            select {
+                height: 30px;
+                width: 100px;
+            }
+        }
+    }
+}
+
+#editor_container {
+    flex: 1 0 auto;
+    border: black solid 1px;
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+
+    #editor_canvas_container {
+        flex: 0 0 50%;
+        width: 50%;
+        min-width: 500px;
+
+        position: relative;
+
+        #image_preview {
+            position: relative;
+            top: 0;
+            left: 0;
+            max-width: 800px;
+            max-height: 600px;
+            width: auto;
+            height: auto;
+        }
+
+        #canvas_background {
+            position: absolute;
+            // background-color: transparent;
+            top: 0;
+            left: 0;
+            transform: scale(0.5);
+            transform-origin: 0 0;
+            // max-width: 800px;
+            // max-height: 600px;
+            // width: auto;
+            // height: auto;
+        }
+
+        app-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+    }
+}

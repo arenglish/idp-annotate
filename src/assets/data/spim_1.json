@@ -1,0 +1,10 @@
+{
+    "spim_cube": "cat.hdf5",
+    "masks": [
+        {
+            "bitmap": "",
+            "tissueId": 1,
+            "classId": 1
+        }
+    ]
+}

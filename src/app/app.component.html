@@ -1,0 +1,28 @@
+<div id="app_container">
+    <div id="sidenav">
+        <div id="sidenav_title">HSI Annotate</div>
+        <!-- <div id="db_selector">
+            Database: <select>
+                <option *ngFor="let db of databases$ | async" (click)="selectDatabase(db.name)">
+                    {{db?.name}}
+                </option>
+            </select>
+        </div> -->
+        <div id="app_modes">
+            <div class="app_mode" *ngFor="let mode of modes" [routerLink]="mode.route" (click)="mode$.next(mode)">
+                <div>{{mode?.name}}</div>
+            </div>
+        </div>
+        <div *ngIf="annotationMode$ | async">
+            <app-annotation-view-options [masks]="(state.annotation.masks$ | async)!">
+            </app-annotation-view-options>
+        </div>
+        <div *ngIf="annotationMode$ | async">
+            <app-annotation-controls></app-annotation-controls>
+        </div>
+
+    </div>
+    <div id="view_container">
+        <router-outlet></router-outlet>
+    </div>
+</div>

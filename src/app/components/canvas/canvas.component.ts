@@ -1,0 +1,415 @@
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, ElementRef, EventEmitter, Input, Output, ViewChild } from '@angular/core';
+import { BehaviorSubject, bufferTime, combineLatest, exhaustMap, filter, first, forkJoin, fromEvent, iif, interval, map, merge, mergeWith, Observable, of, pairwise, ReplaySubject, shareReplay, skipUntil, skipWhile, startWith, Subject, Subscription, switchMap, takeUntil, takeWhile, tap, timer, withLatestFrom, zip } from 'rxjs';
+import { ANNOTATION_TOOLS, ANNOTATION_TOOL_MODES, Brush } from 'src/models/annotation_tools';
+import { Mask } from 'src/models/Database';
+import { ImageSizeInfo } from '../annotate/annotate.component';
+
+declare global {
+  var UPNG: any;
+}
+
+
+const DEFAULT_TOOL = {
+  type: ANNOTATION_TOOLS.BRUSH,
+  size: 48,
+  mode: ANNOTATION_TOOL_MODES.ADD
+};
+
+enum EVENT_TYPES {
+  TouchEnd = 'touchend',
+  TouchCancel = 'touchcancel',
+  MouseUp = 'mouseup',
+  MouseDown = 'mousedown'
+}
+
+type EventInfo = { event: MouseEvent | TouchEvent; coords: { x: number; y: number } }
+@Component({
+  selector: 'app-canvas',
+  templateUrl: './canvas.component.html',
+  styleUrls: ['./canvas.component.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush
+})
+export class CanvasComponent {
+  private defaultGlobalCompositeOperation: GlobalCompositeOperation = 'source-over'
+  private _tool$: BehaviorSubject<Brush> = new BehaviorSubject(DEFAULT_TOOL);
+  public tool$: Observable<Brush> = this._tool$.asObservable();
+  @Input() set tool(tool: Brush | null) {
+    if (tool) {
+      this._tool$.next({
+        ...tool,
+        size: Math.round((this.imageSizeInfo?.scale || 1) * tool.size)
+      })
+    }
+  }
+
+  @ViewChild('canvas') canvas: ElementRef;
+  @ViewChild('canvas_temp') canvasTemp: ElementRef;
+  @ViewChild('brushCursor') brushCursor: ElementRef;
+  cx: CanvasRenderingContext2D;
+  drawingSubscription: Subscription;
+  private _selectedMask$: Subject<Mask> = new ReplaySubject(1);
+  public selectedMask$ = this._selectedMask$.asObservable();
+  private defaultToolColor = '#fff'
+  private toolColor = this.defaultToolColor
+
+  @Input() set selectedMask(mask: Mask | null) {
+    if (mask !== null) {
+      this._selectedMask$.next(mask);
+    }
+  }
+
+  subscriptions: Subscription[] = []
+  private _imageSizeInfo$ = new BehaviorSubject<ImageSizeInfo>({
+    id: 0,
+    resolution: { width: 0, height: 0 },
+    scale: 1,
+    displayWidth: 0, displayHeight: 0
+  })
+  public imageSizeInfo$ = this._imageSizeInfo$.asObservable()
+  @Input() set imageSizeInfo(info: ImageSizeInfo | null) {
+    if (info) {
+      this._imageSizeInfo$.next(info)
+    }
+  }
+
+  pointerStyle$: Observable<{ class: string; size: number }> = combineLatest([this.tool$, this.imageSizeInfo$]).pipe(
+    map(([tool, imageSizeInfo]) => {
+      switch (tool.type) {
+        case ANNOTATION_TOOLS.BRUSH:
+          return {
+            class: 'cursor_brush',
+            size: Math.round(tool.size * imageSizeInfo.scale)
+          };
+        case ANNOTATION_TOOLS.FILL:
+          return {
+            class: 'cursor_fill',
+            size: 0
+          };
+        default:
+          return {
+            class: '',
+            size: 0
+          }
+      }
+    }), shareReplay(1)
+  )
+
+  @Input() opacity: number = 1;
+
+  pointerOrigin$: Observable<string> = this.pointerStyle$.pipe(map(style => `${style.size}px ${style.size}px`), shareReplay(1))
+
+  @Output('updateMaskData') _updateMaskData: EventEmitter<{ id: number; data: string }> = new EventEmitter()
+  private reset$: Subject<null | void> = new Subject<null | void>();
+
+  private cursorDown$: Observable<EventInfo>;
+  private cursorMove$: Observable<EventInfo>;
+  private touchMove$: Observable<EventInfo>;
+  private touchEnd$: Observable<EventInfo>;
+  private cursorUp$: Observable<EventInfo>;
+  private cursorDoubleClick$: Observable<EventInfo>;
+  private linesToolFinish$: Observable<EventInfo>;
+
+  public reset() {
+    this.reset$.next()
+  }
+
+  public getToolEventFlow(tool: Brush) {
+    switch (tool.type) {
+      case ANNOTATION_TOOLS.BRUSH:
+        return this.cursorDown$.pipe(
+          switchMap(res => this.cursorMove$.pipe(takeUntil(this.cursorUp$), pairwise())),
+          withLatestFrom(this.tool$),
+          tap(([events, tool]) => {
+            this.cx.lineWidth = tool.size
+            this.cx.beginPath();
+            this.cx.moveTo(events[0].coords.x, events[0].coords.y); // from
+            this.cx.lineTo(events[1].coords.x, events[1].coords.y);
+            this.cx.strokeStyle = this.toolColor
+
+            if (tool.mode === ANNOTATION_TOOL_MODES.ADD) {
+              this.cx.globalCompositeOperation = "source-over";
+            } else if (tool.mode === ANNOTATION_TOOL_MODES.SUBTRACT) {
+              this.cx.globalCompositeOperation = "destination-out";
+            }
+            this.cx.stroke()
+            this.cx.globalCompositeOperation = this.defaultGlobalCompositeOperation
+          })
+        )
+      case ANNOTATION_TOOLS.FILL:
+        const done$ = new Subject<void>();
+        return this.cursorDown$.pipe(
+          exhaustMap(e => {
+            const points = [[e.coords.x, e.coords.y]]
+            this.cx.moveTo(points[0][0], points[0][1])
+            this.cx.lineWidth = 1.5
+            this.cx.strokeStyle = this.toolColor
+            const canvasOriginal = this.canvas.nativeElement.toDataURL("image/png")
+
+            const fillPoints = (points: number[][], color: string, context: CanvasRenderingContext2D, removeAndFill: boolean = false, strokeColor: string | null = null) => {
+              context.moveTo(points[0][0], points[0][1])
+
+              points.slice(1).forEach(point => {
+                context.lineTo(point[0], point[1]);
+              })
+
+              if (removeAndFill) {
+                context.globalCompositeOperation = "destination-out";
+                context.fillStyle = 'white';
+                context.fill()
+              }
+              context.globalCompositeOperation = "source-over";
+              context.fillStyle = color;
+              context.fill()
+
+              if (strokeColor) {
+                context.moveTo(points[points.length - 1][0], points[points.length - 1][1])
+                context.lineTo(points[0][0], points[0][1])
+                context.setLineDash([5, 3]);
+                context.setLineDash([])
+                context.strokeStyle = strokeColor;
+                context.stroke();
+              }
+
+              context.globalCompositeOperation = this.defaultGlobalCompositeOperation;
+            }
+            // interval(100).pipe(
+            //   tap(() => {
+
+            //     fillPoints(points, 'rgba(255,255,255,.5)', this.canvasTemp.nativeElement.getContext('2d'), 'black');
+            //   }),
+            //   takeUntil(done$),
+            //   takeUntil(this.reset$)
+            // ).subscribe()
+
+            return merge(this.cursorDown$, this.cursorDoubleClick$, this.touchEnd$, this.touchMove$).pipe(
+              startWith(e),
+              pairwise(),
+              map(events => events as [EventInfo, EventInfo]),
+              switchMap(events => {
+                const cx = this.canvas.nativeElement.getContext('2d')
+                cx.beginPath();
+
+                if (events[1].event.detail === 2) {
+                  this.cx.clearRect(0, 0, this.canvas.nativeElement.width, this.canvas.nativeElement.height);
+                  return zip([of(events), this.drawImToCanvas(this.canvas.nativeElement.getContext('2d'), canvasOriginal).pipe(
+                    tap(() => {
+                      const fillColor = tool.mode === ANNOTATION_TOOL_MODES.ADD ? this.toolColor : 'transparent'
+                      fillPoints(points, fillColor, this.canvas.nativeElement.getContext('2d'), tool.mode === ANNOTATION_TOOL_MODES.SUBTRACT)
+                      done$.next()
+                    })
+                  )])
+                }
+
+                return zip([of(events), of(null).pipe(
+                  tap(() => {
+                    const point = [events[1].coords.x, events[1].coords.y]
+                    points.push(point)
+                  })
+                )])
+              }),
+              filter(([events]) => events[1].event.detail !== 2),
+              bufferTime(8),
+              withLatestFrom(this.tool$),
+              switchMap(([args, tool]) => {
+                if (args.length === 0) {
+                  return of()
+                }
+                return this.drawImToCanvas(this.canvas.nativeElement.getContext('2d'), canvasOriginal, 'copy').pipe(
+                  tap(() => {
+                    const fillColor = tool.mode === ANNOTATION_TOOL_MODES.ADD ? 'rgba(255,255,255,.5)' : 'rgba(255,255,255,.2)'
+                    fillPoints(points, fillColor, this.canvas.nativeElement.getContext('2d'), tool.mode === ANNOTATION_TOOL_MODES.SUBTRACT, 'black')
+                  })
+                )
+              }),
+              takeUntil(done$),
+              takeUntil(this.reset$)
+            )
+          })
+        )
+      default:
+        return of(null)
+    }
+  }
+
+  private getEventPosition(event: MouseEvent | TouchEvent) {
+    const rect = this.canvas.nativeElement.getBoundingClientRect();
+
+    if (event instanceof MouseEvent) {
+      return {
+        x: this.scaleInput(event.clientX - rect.left),
+        y: this.scaleInput(event.clientY - rect.top)
+      }
+    } else {
+      return {
+        x: this.scaleInput(event.changedTouches[0].clientX - rect.left),
+        y: this.scaleInput(event.changedTouches[0].clientY - rect.top)
+      }
+    }
+  }
+
+  ngAfterViewInit() {
+    const canvasEl = this.canvas.nativeElement;
+
+    this.cursorDown$ = merge(
+      fromEvent(canvasEl, 'mousedown'), fromEvent(canvasEl, 'touchstart')).pipe(
+        map(e => e as MouseEvent),
+        map(event => {
+          return {
+            event,
+            coords: this.getEventPosition(event)
+          }
+        })
+      )
+
+    this.touchMove$ = fromEvent(canvasEl, 'touchmove').pipe(
+      map(e => e as MouseEvent),
+      map(event => {
+        return {
+          event,
+          coords: this.getEventPosition(event)
+        }
+      })
+    )
+
+    this.cursorMove$ = merge(
+      fromEvent(canvasEl, 'mousemove'), fromEvent(canvasEl, 'touchmove')).pipe(
+        map(e => e as MouseEvent),
+        map(event => {
+          return {
+            event,
+            coords: this.getEventPosition(event)
+          }
+        })
+      )
+
+    this.subscriptions.push(combineLatest([this.pointerStyle$, this.cursorMove$.pipe(bufferTime(6))]).pipe(
+      filter(([pointerStyle, events]) => {
+        return pointerStyle.class === 'cursor_brush' && events.length > 0
+      }),
+      tap(([pointerStyle, events]) => {
+        this.brushCursor.nativeElement.style.left = this.scaleInput(events[events.length - 1].coords.x, false) - pointerStyle.size / 2 + 'px'
+        this.brushCursor.nativeElement.style.top = this.scaleInput(events[events.length - 1].coords.y, false) - pointerStyle.size / 2 + 'px'
+      })).subscribe())
+
+
+    this.touchEnd$ = merge(
+      merge(
+        fromEvent(canvasEl, 'touchend'),
+        fromEvent(canvasEl, 'touchcancel')
+      ).pipe(map(e => e as MouseEvent),
+        map(event => {
+          return {
+            event,
+            coords: this.getEventPosition(event)
+          }
+        })
+      )
+    )
+
+    this.cursorUp$ = merge(
+      merge(
+        fromEvent(canvasEl, 'mouseup'),
+        fromEvent(canvasEl, 'mouseleave'),
+        fromEvent(canvasEl, 'touchend'),
+        fromEvent(canvasEl, 'touchcancel')
+      ).pipe(map(e => e as MouseEvent),
+        map(event => {
+          return {
+            event,
+            coords: this.getEventPosition(event)
+          }
+        })
+      )
+    )
+
+    this.cursorDoubleClick$ = merge(
+      fromEvent(canvasEl, 'mousedown'),
+      fromEvent(canvasEl, 'touchstart')
+    ).pipe(
+      map(e => e as MouseEvent),
+      filter(e => e.detail === 2),
+      map(event => {
+        return {
+          event,
+          coords: this.getEventPosition(event)
+        }
+      })
+    )
+
+
+    this.cx = canvasEl.getContext('2d') as CanvasRenderingContext2D;
+
+    this.cx.lineCap = 'round';
+    this.cx.strokeStyle = this.toolColor;
+
+    this.subscriptions.push(
+      this.tool$.pipe(switchMap(tool => this.getToolEventFlow(tool))).subscribe()
+    )
+
+    this.subscriptions.push(combineLatest([this.selectedMask$, this.reset$.pipe(startWith(null))]).pipe(
+      tap(([mask, reset]) => {
+        this.toolColor = mask.color || this.defaultToolColor
+        this.resetCanvas(mask.bitmap);
+      })
+    ).subscribe())
+  }
+
+  drawImToCanvas(cx: CanvasRenderingContext2D, imSrc: string, compositionOperation: GlobalCompositeOperation = 'source-over') {
+    const im = new Image();
+
+    const subj = new Subject<void>()
+    fromEvent(im, 'load').pipe(
+      tap(() => {
+        cx.globalCompositeOperation = compositionOperation
+        cx.drawImage(im, 0, 0);
+        cx.globalCompositeOperation = this.defaultGlobalCompositeOperation
+        subj.next();
+      })
+    ).subscribe()
+    im.src = imSrc;
+
+    return subj;
+  }
+
+  saveCanvas() {
+    const data = this.canvas.nativeElement.toDataURL("image/png")
+
+    this.selectedMask$.pipe(
+      first(),
+      withLatestFrom(this.imageSizeInfo$),
+      tap(([mask, sizeInfo]) => {
+        const updatedMask = {
+          id: mask.id,
+          data
+        }
+
+        this._updateMaskData.emit(updatedMask)
+
+        const png = UPNG.decode(this.cx.getImageData(0, 0, sizeInfo.resolution.width, sizeInfo.resolution.height).data.buffer)
+        const download = document.createElement('a');
+        download.href = data;
+        download.download = 'mask.png';
+        download.click();
+      })
+    ).subscribe()
+
+  }
+
+  scaleInput(x: number, invert: boolean = true): number {
+    return invert ? Math.round((1 / (this._imageSizeInfo$.getValue().scale || 1)) * x) : Math.round(this._imageSizeInfo$.getValue().scale * x)
+  }
+
+  private clearCanvas(canvas: HTMLCanvasElement) {
+    canvas.getContext('2d')!.clearRect(0, 0, canvas.width, canvas.height);
+  }
+
+  private resetCanvas(imSrc: string) {
+    this.clearCanvas(this.canvas.nativeElement)
+    this.clearCanvas(this.canvasTemp.nativeElement)
+    this.drawImToCanvas(this.canvas.nativeElement.getContext('2d'), imSrc)
+  }
+
+  ngOnDestroy() {
+    this.subscriptions.forEach(sub => sub.unsubscribe())
+  }
+}

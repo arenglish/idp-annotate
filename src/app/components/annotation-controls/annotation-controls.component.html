@@ -1,0 +1,43 @@
+<div>
+    <div id="tool_section_header">
+        Annotation
+    </div>
+    <div id="tools">
+        Tool:
+        <div>
+            <div *ngFor="let toolType of toolTypes" (click)="setToolType(toolType.type)"
+                [class.selected]="toolType.type === (state.annotation.tool$ | async)!.type">
+                <img [src]="toolType.icon" width="24px">
+            </div>
+        </div>
+
+    </div>
+    <div id="tool_modes">
+        Mode:
+        <div>
+            <div *ngFor="let toolMode of toolModes" (click)="setToolMode(toolMode.type)"
+                [class.selected]="toolMode.type === (state.annotation.tool$ | async)!.mode">
+                <img [src]="toolMode.icon" width="24px">
+            </div>
+        </div>
+
+    </div>
+    <div class="tool_item">
+        <div class="tool_label">
+            Mask Opacity
+        </div>
+        <div class="tool_control custom-slider">
+            <ngx-slider [options]="sliderOptions" [value]="100" (valueChange)="onOpacitySliderChange($event)">
+            </ngx-slider>
+        </div>
+    </div>
+    <div class="tool_item">
+        <div class="tool_label">
+            Brush Size
+        </div>
+        <div class="tool_control custom-slider">
+            <ngx-slider [options]="sliderOptions" [value]="48" (valueChange)="onBrushSizeSliderChange($event)">
+            </ngx-slider>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,15 @@
+:host {
+    position: relative;
+    display: block;
+}
+
+#im_preview {
+    position: relative;
+}
+
+.mask_overlay_container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+}

@@ -1,0 +1,46 @@
+#canvas_bg,
+#canvas_active,
+#canvas_temp {
+    // transform: scale(0.5);
+    touch-action: none;
+    // filter: brightness(0%);
+    width: 100%;
+}
+
+#canvas_container {
+    position: relative;
+}
+
+#brush_cursor {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100px;
+    pointer-events: none;
+
+    svg {
+        mix-blend-mode: difference;
+    }
+}
+
+#canvas_bg {
+    position: relative;
+    top: 0;
+    left: 0;
+    $brushSizes: 500;
+
+    &.cursor_fill {
+        cursor: crosshair;
+    }
+
+    &.cursor_brush {
+        cursor: none;
+    }
+}
+
+#canvas_temp {
+    position: absolute;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+}

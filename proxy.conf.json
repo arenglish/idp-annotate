@@ -1,0 +1,5 @@
+{
+  "/api/spims": {
+    "target": "/assets/data/spims.json"
+  }
+}

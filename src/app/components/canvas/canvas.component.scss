@@ -5,6 +5,7 @@
     touch-action: none;
     // filter: brightness(0%);
     width: 100%;
+    z-index: 1000;
 }
 
 #canvas_container {
@@ -35,6 +36,10 @@
 
     &.cursor_brush {
         cursor: none;
+    }
+
+    &.cursor_disabled {
+        cursor: default;
     }
 }
 

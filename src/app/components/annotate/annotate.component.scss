@@ -12,10 +12,10 @@
     padding: 8px;
 
     div {
-        height: 35px;
+        height: auto;
         display: flex;
         flex-direction: row;
-        margin-bottom: 8px;
+        margin-bottom: 4px;
         align-items: baseline;
 
         >* {

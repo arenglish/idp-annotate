@@ -1,7 +1,7 @@
 import { Injectable } from "@angular/core";
 import { Store } from "@ngrx/store";
 import { find, get } from "lodash";
-import { combineLatest, filter, map, Observable, of, OperatorFunction, shareReplay, withLatestFrom } from "rxjs";
+import { combineLatest, filter, map, Observable, of, OperatorFunction, shareReplay, Subject, withLatestFrom } from "rxjs";
 import { ImageEntitySelectors } from "src/app/state/entities/images.entities";
 import { MaskEntitySelectors } from "src/app/state/entities/masks.entities";
 import { FullState } from "src/app/state/main";
@@ -21,6 +21,7 @@ export class StateService {
         maskOpacity$: Observable<number>;
         maskColors$: Observable<{ hex: string; filter: string }[]>;
         tool$: Observable<Brush>;
+        mergeMasks$: Subject<{mask1Id: number; mask2Id: number}>;
     }
 
 
@@ -54,7 +55,8 @@ export class StateService {
             showMasks$,
             maskOpacity$,
             maskColors$,
-            tool$
+            tool$,
+            mergeMasks$: new Subject()
         }
 
 

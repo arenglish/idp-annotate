@@ -3,10 +3,11 @@
 <ng-content></ng-content>
 
 <ng-container *ngFor="let mask of (visibleMasks$ | async); let idx = index; trackBy: trackBy">
-    <div *ngIf="mask.id !== selectedMaskId && !!mask.bitmap" class="mask_overlay_container" [style.opacity]="maskOpacity"
-        [style.width]="imageSizeInfo?.displayWidth + 'px'" [style.height]="imageSizeInfo?.displayHeight + 'px'">
+    <div *ngIf="mask.id !== selectedMaskId && !!mask.bitmap" class="mask_overlay_container"
+        [style.opacity]="maskOpacity" [style.width]="imageSizeInfo?.displayWidth + 'px'"
+        [style.height]="imageSizeInfo?.displayHeight + 'px'">
         <app-mask-overlay-canvas [width]="imageSizeInfo?.resolution?.width || 0"
-            [height]="imageSizeInfo?.resolution?.height || 0" [imageData]="mask.bitmap">
+            [height]="imageSizeInfo?.resolution?.height || 0" [imageData]="mask.bitmap" [color]="mask.color!.hex">
 
         </app-mask-overlay-canvas>
     </div>

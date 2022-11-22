@@ -1,5 +1,7 @@
 import { ChangeDetectionStrategy, Component, ElementRef, Input, OnInit, TemplateRef, ViewChild } from '@angular/core';
-import { first, fromEvent, tap } from 'rxjs';
+import { catchError, first, fromEvent, of, tap } from 'rxjs';
+import { getServerAssetUrl } from 'src/app/pipes/server-asset.pipe';
+import { hexToRgb } from 'src/utils/color';
 
 @Component({
   selector: 'app-mask-overlay-canvas',
@@ -10,7 +12,7 @@ import { first, fromEvent, tap } from 'rxjs';
 export class MaskOverlayCanvasComponent {
   @Input() width: number;
   @Input() height: number;
-  @Input() color: string | undefined;
+  @Input() color: string;
   @Input() imageData: string;
 
   @ViewChild('canvas') canvas: ElementRef<HTMLCanvasElement>
@@ -18,22 +20,37 @@ export class MaskOverlayCanvasComponent {
   ngAfterViewInit(): void {
     const cx = this.canvas.nativeElement.getContext('2d')
     const im = new Image();
+    im.crossOrigin = "anonymous";
 
     if (cx) {
       fromEvent(im, 'load').pipe(
         first(),
         tap(() => {
-          // const imdata = im.
-          // for(let i = 0; i < 2; i += 4) {
-          //   const red = data[i];
-          //   const green = data[i + 1];
-          //   const blue = data[i + 2];
-          //   const alpha = data[i + 3];
-          // }
           cx.drawImage(im, 0, 0, this.width, this.height);
-        })
+
+          const image = cx.getImageData(0, 0, this.width, this.height);
+          const { data } = image;
+          const { length } = data;
+
+          for (let i = 0; i < length; i += 4) { // red, green, blue, and alpha
+            const r = data[i + 0];
+            const g = data[i + 1];
+            const b = data[i + 2];
+            const a = data[i + 3];
+
+            if (a > 0) {
+              const rgb = hexToRgb(this.color)
+              data[i + 0] = rgb.r;
+              data[i + 1] = rgb.g;
+              data[i + 2] = rgb.b;
+            }
+          }
+
+          cx.putImageData(image, 0, 0);
+        }),
+        catchError(err => of(console.log(err)))
       ).subscribe()
-      im.src = this.imageData;
+      im.src = getServerAssetUrl(this.imageData);
     }
   }
 

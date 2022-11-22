@@ -1,7 +1,9 @@
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, ElementRef, EventEmitter, Input, Output, ViewChild } from '@angular/core';
-import { BehaviorSubject, bufferTime, combineLatest, exhaustMap, filter, first, forkJoin, fromEvent, iif, interval, map, merge, mergeWith, Observable, of, pairwise, ReplaySubject, shareReplay, skipUntil, skipWhile, startWith, Subject, Subscription, switchMap, takeUntil, takeWhile, tap, timer, withLatestFrom, zip } from 'rxjs';
+import { ChangeDetectionStrategy, Component, ElementRef, EventEmitter, Input, Output, ViewChild } from '@angular/core';
+import { BehaviorSubject, bufferTime, combineLatest, exhaustMap, filter, first, fromEvent, map, merge, mergeWith, Observable, of, pairwise, ReplaySubject, shareReplay, skipUntil, skipWhile, startWith, Subject, Subscription, switchMap, takeUntil, takeWhile, tap, timer, withLatestFrom, zip } from 'rxjs';
+import { getServerAssetUrl } from 'src/app/pipes/server-asset.pipe';
 import { ANNOTATION_TOOLS, ANNOTATION_TOOL_MODES, Brush } from 'src/models/annotation_tools';
 import { Mask } from 'src/models/Database';
+import { hexToRgb } from 'src/utils/color';
 import { ImageSizeInfo } from '../annotate/annotate.component';
 
 declare global {
@@ -30,7 +32,7 @@ type EventInfo = { event: MouseEvent | TouchEvent; coords: { x: number; y: numbe
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class CanvasComponent {
-  private defaultGlobalCompositeOperation: GlobalCompositeOperation = 'source-over'
+  private defaultGlobalCompositeOperation: any = 'source-over'
   private _tool$: BehaviorSubject<Brush> = new BehaviorSubject(DEFAULT_TOOL);
   public tool$: Observable<Brush> = this._tool$.asObservable();
   @Input() set tool(tool: Brush | null) {
@@ -40,6 +42,12 @@ export class CanvasComponent {
         size: Math.round((this.imageSizeInfo?.scale || 1) * tool.size)
       })
     }
+  }
+
+  private _disabled$ = new BehaviorSubject(true)
+  public disabled$ = this._disabled$.asObservable()
+  @Input() set disabled(d: boolean) {
+    this._disabled$.next(d)
   }
 
   @ViewChild('canvas') canvas: ElementRef;
@@ -72,8 +80,14 @@ export class CanvasComponent {
     }
   }
 
-  pointerStyle$: Observable<{ class: string; size: number }> = combineLatest([this.tool$, this.imageSizeInfo$]).pipe(
-    map(([tool, imageSizeInfo]) => {
+  pointerStyle$: Observable<{ class: string; size: number }> = combineLatest([this.tool$, this.imageSizeInfo$, this.disabled$]).pipe(
+    map(([tool, imageSizeInfo, disabled]) => {
+      if (disabled) {
+        return {
+          class: 'cursor_disabled',
+          size: 0
+        }
+      }
       switch (tool.type) {
         case ANNOTATION_TOOLS.BRUSH:
           return {
@@ -343,19 +357,24 @@ export class CanvasComponent {
     this.cx.strokeStyle = this.toolColor;
 
     this.subscriptions.push(
-      this.tool$.pipe(switchMap(tool => this.getToolEventFlow(tool))).subscribe()
+      combineLatest([this.tool$, this.disabled$]).pipe(switchMap(([tool, disabled]) => disabled ? of() : this.getToolEventFlow(tool))).subscribe()
     )
 
     this.subscriptions.push(combineLatest([this.selectedMask$, this.reset$.pipe(startWith(null))]).pipe(
       tap(([mask, reset]) => {
-        this.toolColor = mask.color || this.defaultToolColor
+        // this.toolColor = mask.color || this.defaultToolColor
         this.resetCanvas(mask.bitmap);
       })
     ).subscribe())
   }
 
-  drawImToCanvas(cx: CanvasRenderingContext2D, imSrc: string, compositionOperation: GlobalCompositeOperation = 'source-over') {
+  mergeExternalImage(imSrc: string, compositionOperation: any = 'source-over') {
+    this.drawImToCanvas(this.cx, imSrc, compositionOperation)
+  }
+
+  drawImToCanvas(cx: CanvasRenderingContext2D, imSrc: string, compositionOperation: any = 'source-over') {
     const im = new Image();
+    im.crossOrigin = "anonymous";
 
     const subj = new Subject<void>()
     fromEvent(im, 'load').pipe(
@@ -372,24 +391,44 @@ export class CanvasComponent {
   }
 
   saveCanvas() {
-    const data = this.canvas.nativeElement.toDataURL("image/png")
-
     this.selectedMask$.pipe(
       first(),
       withLatestFrom(this.imageSizeInfo$),
       tap(([mask, sizeInfo]) => {
+        const image = this.cx.getImageData(0, 0, sizeInfo.resolution.width, sizeInfo.resolution.height);
+        const { data } = image;
+        const { length } = data;
+        const rgb = hexToRgb(mask.color!)
+
+        // ensure image alpha is binary before saving
+        for (let i = 0; i < length; i += 4) {
+          const a = data[i + 3];
+
+          if (a > 0) {
+            data[i + 0] = 255;
+            data[i + 1] = 255;
+            data[i + 2] = 255;
+            data[i + 3] = 255;
+          }
+        }
+
+        this.clearCanvas(this.canvas.nativeElement)
+        this.clearCanvas(this.canvasTemp.nativeElement)
+        this.cx.putImageData(image, 0, 0);
+        const dataString = this.canvas.nativeElement.toDataURL("image/png")
+
         const updatedMask = {
           id: mask.id,
-          data
+          data: dataString
         }
 
         this._updateMaskData.emit(updatedMask)
 
-        const png = UPNG.decode(this.cx.getImageData(0, 0, sizeInfo.resolution.width, sizeInfo.resolution.height).data.buffer)
-        const download = document.createElement('a');
-        download.href = data;
-        download.download = 'mask.png';
-        download.click();
+        // const png = UPNG.decode(this.cx.getImageData(0, 0, sizeInfo.resolution.width, sizeInfo.resolution.height).data.buffer)
+        // const download = document.createElement('a');
+        // download.href = dataString;
+        // download.download = 'mask.png';
+        // download.click();
       })
     ).subscribe()
 
@@ -406,7 +445,7 @@ export class CanvasComponent {
   private resetCanvas(imSrc: string) {
     this.clearCanvas(this.canvas.nativeElement)
     this.clearCanvas(this.canvasTemp.nativeElement)
-    this.drawImToCanvas(this.canvas.nativeElement.getContext('2d'), imSrc)
+    this.drawImToCanvas(this.canvas.nativeElement.getContext('2d'), getServerAssetUrl(imSrc))
   }
 
   ngOnDestroy() {

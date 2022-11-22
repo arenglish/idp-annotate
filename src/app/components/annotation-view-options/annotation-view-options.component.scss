@@ -14,6 +14,13 @@
     cursor: pointer;
 }
 
+fieldset legend {
+    display: flex;
+    align-items: center;
+    width: 60px;
+    justify-content: space-between;
+}
+
 #tool_section_header {
     font-size: 18px;
     margin-bottom: 12px;

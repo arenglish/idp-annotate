@@ -2,6 +2,7 @@ import { Options } from '@angular-slider/ngx-slider';
 import { Component } from '@angular/core';
 import { Store } from '@ngrx/store';
 import { setBrushMode, setBrushSize, setBrushType, setMaskOpacity } from 'src/app/state/annotate/annotate.actions';
+import { MaskEntityActions } from 'src/app/state/entities/masks.entities';
 import { FullState } from 'src/app/state/main';
 import { ANNOTATION_TOOLS, ANNOTATION_TOOL_MODES } from 'src/models/annotation_tools';
 import { StateService } from 'src/services/state.service';
@@ -17,8 +18,8 @@ export class AnnotationControlsComponent {
     { name: ANNOTATION_TOOLS[ANNOTATION_TOOLS.FILL], type: ANNOTATION_TOOLS.FILL, icon: 'assets/svg/poly_line.svg' }
   ]
   toolModes = [
-    { name: ANNOTATION_TOOL_MODES[ANNOTATION_TOOL_MODES.ADD], type: ANNOTATION_TOOL_MODES.ADD, icon: 'assets/svg/plus_circle.svg'},
-    { name: ANNOTATION_TOOL_MODES[ANNOTATION_TOOL_MODES.SUBTRACT], type: ANNOTATION_TOOL_MODES.SUBTRACT, icon: 'assets/svg/minus.svg'}
+    { name: ANNOTATION_TOOL_MODES[ANNOTATION_TOOL_MODES.ADD], type: ANNOTATION_TOOL_MODES.ADD, icon: 'assets/svg/plus_circle.svg' },
+    { name: ANNOTATION_TOOL_MODES[ANNOTATION_TOOL_MODES.SUBTRACT], type: ANNOTATION_TOOL_MODES.SUBTRACT, icon: 'assets/svg/minus.svg' }
   ]
   sliderOptions: Options = {
     floor: 0,
@@ -40,5 +41,19 @@ export class AnnotationControlsComponent {
 
   onBrushSizeSliderChange(size: number) {
     this.store.dispatch(setBrushSize({ size }))
+  }
+
+  mergeMasksButtonClicked(mask1Id: number | string, mask2Id: number | string) {
+    if (typeof mask1Id === 'string') {
+      mask1Id = parseInt(mask1Id, 10)
+    }
+    if (typeof mask2Id === 'string') {
+      mask2Id = parseInt(mask2Id, 10)
+    }
+    console.log(`Merging mask ${mask1Id} with mask ${mask2Id}`)
+    this.store.dispatch(MaskEntityActions.mergeMasks({
+      mask1Id,
+      mask2Id
+    }))
   }
 }

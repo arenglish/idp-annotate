@@ -26,7 +26,7 @@ export class ImageViewerComponent {
     }
   }
 
-  @Input() selectedMaskId: number | null;
+  @Input() selectedMaskId: number | null | undefined;
 
   @Input() maskOpacity: number | null = 1;
   @Input() imageSizeInfo: ImageSizeInfo | null;

@@ -6,6 +6,7 @@ import { BehaviorSubject, combineLatest, first, map, Observable, shareReplay, ta
 import { selectMaskForAnnotation, selectMasksForAnnotationView, setAnnotationImageZoom } from 'src/app/state/annotate/annotate.actions';
 import { MaskEntityActions } from 'src/app/state/entities/masks.entities';
 import { FullState } from 'src/app/state/main';
+import { environment } from 'src/environments/environment';
 import { Mask, SpectralImageSlim } from 'src/models/Database';
 import { StateService } from 'src/services/state.service';
 
@@ -15,10 +16,12 @@ import { StateService } from 'src/services/state.service';
   styleUrls: ['./annotation-view-options.component.scss']
 })
 export class AnnotationViewOptionsComponent {
+  add_mask_icon = `${environment.appAssetsPath}/svg/plus_circle.svg`
+  trash_icon = `${environment.appAssetsPath}/svg/trash.svg`
   visibilityIcons = {
-    visible: '/assets/svg/visibility_on.svg',
-    visibility_disabled: '/assets/svg/visibility_disabled.svg',
-    visibility_off: '/assets/svg/visibility_off.svg'
+    visible: `${environment.appAssetsPath}/svg/visibility_on.svg`,
+    visibility_disabled: `${environment.appAssetsPath}/svg/visibility_disabled.svg`,
+    visibility_off: `${environment.appAssetsPath}/svg/visibility_off.svg`
   }
   private _masks$ = new BehaviorSubject<Mask[]>([]);
   public masks$ = this._masks$.asObservable()
@@ -62,7 +65,11 @@ export class AnnotationViewOptionsComponent {
   }
 
   removeMaskButtonClicked(mask: Mask) {
-    this.store.dispatch(MaskEntityActions.removeMask({ maskId: mask.id }))
+    if (mask.id < 0) {
+      this.store.dispatch(MaskEntityActions.removeMask({ maskId: mask.id }))
+    } else {
+      this.store.dispatch(MaskEntityActions.requestDeleteMask({ maskId: mask.id }))
+    }
   }
 
   onShowMaskSelect(id: number) {

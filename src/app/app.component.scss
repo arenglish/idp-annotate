@@ -5,18 +5,30 @@
     width: 100%;
 }
 
+#sidenav_title {
+    font-size: 24px;
+}
+
 #sidenav {
     width: 230px;
     background-color: burlywood;
     padding: 12px;
+    overflow-y: auto;
 
     >* {
-        padding: 12px 0px;
-        border-bottom: rgba(0, 0, 0, .5) solid 1.5px;
+        margin: 12px 0px;
+        padding: 12px 8px;
+        background-color: rgb(241, 200, 146);
+        border-radius: 4px;
     }
 
     >*:first-child {
-        border-bottom: none;
+        padding: 0px 8px;
+        background-color: burlywood
+    }
+
+    >*:nth-child(2) {
+        background-color: burlywood
     }
 }
 

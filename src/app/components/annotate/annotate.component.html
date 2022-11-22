@@ -1,5 +1,13 @@
 <div id="view_container">
     <div id="header_bar">
+        <ng-container [ngSwitch]="(state.annotation.tool$ | async)!.type">
+            <div *ngSwitchDefault>Note: Use mouse or touch device to draw mask. (Use subtraction mode for
+                erasing).</div>
+            <div *ngSwitchCase="toolTypes.FILL">Note: Click setpoints to define a shape to be filled.
+                Alternatively, use a
+                stylus device to draw a freeform shape. Double-click for the last point to finish and fill.
+            </div>
+        </ng-container>
         <div>
             <div>
                 <button (click)="canvasComponent.reset()">Reset</button>
@@ -15,9 +23,9 @@
         <div id="editor_canvas_container">
             <!-- <img id="image_preview" [src]="image.previewFilename | dbStaticAsset"> -->
             <!-- <img id="canvas_background" [src]="((selectedImage$ | async)?.previewFilename || '') | dbStaticAsset"> -->
-            <app-image-viewer [imageData]="(selectedImage$ | async)?.rgb" [selectedMaskId]="selectedMaskId$ | async"
-                [maskOpacity]="state.annotation.maskOpacity$ | async" [visibleMasks]="visibleMasksData$ | async"
-                [imageSizeInfo]="imageMeta$ | async">
+            <app-image-viewer [imageData]="(selectedImage$ | async)?.rgb | serverAssetPrefix"
+                [selectedMaskId]="(selectedMask$ | async)?.id" [maskOpacity]="state.annotation.maskOpacity$ | async"
+                [visibleMasks]="visibleMasksData$ | async" [imageSizeInfo]="imageMeta$ | async">
                 <ng-content *ngTemplateOutlet="canvasTemplate"></ng-content>
             </app-image-viewer>
 
@@ -28,8 +36,8 @@
 <ng-template #canvasTemplate>
     <ng-container *ngIf="imageMeta$ | async as imageMeta">
         <app-canvas #canvasComponent [imageSizeInfo]="imageMeta" [selectedMask]="selectedMask$ | async"
-            [tool]="state.annotation.tool$ | async" [opacity]="(state.annotation.maskOpacity$ | async) || 1"
-            (updateMaskData)="updateMaskData($event)">
+            [disabled]="!(selectedMask$ | async)" [tool]="state.annotation.tool$ | async"
+            [opacity]="(state.annotation.maskOpacity$ | async) || 1" (updateMaskData)="updateMaskData($event)">
         </app-canvas>
     </ng-container>
 </ng-template>

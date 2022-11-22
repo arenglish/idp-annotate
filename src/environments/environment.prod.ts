@@ -3,8 +3,9 @@
 // The list of file replacements can be found in `angular.json`.
 const _e = {
   production: false,
-  apiUrl: 'http://localhost:3002',
-  staticAssetsPath: 'static',
+  // apiUrl: '/static/annotate/assets/data',
+  apiUrl: '/api',
+  staticAssetsPath: '/static/annotate/assets',
   uploadPath: 'upload',
   urlPaths: {
     spims: 'spims',

@@ -9,7 +9,7 @@ import { StateService } from 'src/services/state.service';
 })
 export class BrowseComponent {
   imageBasePath = 'static'
-  apiUrl = environment.apiUrl
+  apiUrl = environment.urls.api
 
   constructor(public state: StateService) { }
 }

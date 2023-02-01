@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, ElementRef, Input, OnInit, TemplateRef, ViewChild } from '@angular/core';
-import { catchError, first, fromEvent, of, tap } from 'rxjs';
+import { buffer, catchError, combineLatest, filter, first, fromEvent, map, of, ReplaySubject, Subject, Subscription, tap } from 'rxjs';
 import { getServerAssetUrl } from 'src/app/pipes/server-asset.pipe';
 import { hexToRgb } from 'src/utils/color';
 
@@ -12,12 +12,42 @@ import { hexToRgb } from 'src/utils/color';
 export class MaskOverlayCanvasComponent {
   @Input() width: number;
   @Input() height: number;
-  @Input() color: string;
-  @Input() imageData: string;
+  private _color$ = new ReplaySubject<string>(1)
+  public color$ = this._color$.asObservable()
+  @Input() set color(c: string | undefined | null) {
+    if (c !== undefined && c !== null) {
+      this._color$.next(c)
+    }
+  }
+
+  private _imageData$ = new ReplaySubject<string>(1);
+  public imageData$ = this._imageData$.asObservable()
+  @Input() set imageData(d: string | undefined | null) {
+    if (d !== undefined && d !== null) {
+      this._imageData$.next(d)
+    }
+  }
+
+  private viewInitialized$ = new ReplaySubject<void>(1)
+
+  private subscriptions: Subscription[] = []
 
   @ViewChild('canvas') canvas: ElementRef<HTMLCanvasElement>
+  @Input() canvasClass: string = ''
 
-  ngAfterViewInit(): void {
+  constructor() {
+    this.subscriptions.push(combineLatest([this._color$, this._imageData$, this.viewInitialized$]).pipe(
+      tap(([color, data, viewInit]) => {
+        this.redraw(color, data)
+      })
+    ).subscribe())
+  }
+
+  ngAfterViewInit() {
+    this.viewInitialized$.next()
+  }
+
+  redraw(color: string, data: string) {
     const cx = this.canvas.nativeElement.getContext('2d')
     const im = new Image();
     im.crossOrigin = "anonymous";
@@ -39,7 +69,7 @@ export class MaskOverlayCanvasComponent {
             const a = data[i + 3];
 
             if (a > 0) {
-              const rgb = hexToRgb(this.color)
+              const rgb = hexToRgb(color)
               data[i + 0] = rgb.r;
               data[i + 1] = rgb.g;
               data[i + 2] = rgb.b;
@@ -50,7 +80,7 @@ export class MaskOverlayCanvasComponent {
         }),
         catchError(err => of(console.log(err)))
       ).subscribe()
-      im.src = getServerAssetUrl(this.imageData);
+      im.src = getServerAssetUrl(data);
     }
   }
 

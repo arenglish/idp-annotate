@@ -12,5 +12,6 @@ export function getServerAssetUrl(assetPath: string): string {
   if (assetPath.includes('data:image')) {
     return assetPath
   }
-  return `${environment.serverAssetsPath}/${assetPath}`
+  const prepend = environment.serverAssetsPath === '' ? '' : `${environment.serverAssetsPath}/`
+  return `${prepend}${assetPath}`
 }

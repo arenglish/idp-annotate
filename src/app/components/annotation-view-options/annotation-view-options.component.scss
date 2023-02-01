@@ -28,8 +28,9 @@ fieldset legend {
 
 .mask_color_patch {
     background-color: white;
-    height: 20px;
-    width: 20px;
+    border: solid black 1px;
+    height: 16px;
+    width: 16px;
     border-radius: 6px;
     cursor: pointer;
 }
@@ -40,6 +41,7 @@ fieldset legend {
     justify-content: space-between;
     align-items: center;
     border-radius: 4px;
+    margin-bottom: 4px;
 
     &.selected {
         background-color: rgba(255, 255, 255, .4);
@@ -47,19 +49,92 @@ fieldset legend {
 
     div {
         display: flex;
-        margin-right: 4px;
 
         >* {
             margin-right: 4px;
         }
     }
 
-    &:hover {
+    &:hover:not(.selected) {
         background-color: rgba(255, 255, 255, .2);
     }
 
     .mask_info {
-        cursor: pointer;
+        display: flex;
+        flex-direction: column;
+        border: solid 1px black;
+        padding: 0 2px;
+        border-radius: 4px;
+        width: 100%;
+
+        >div {
+            display: flex;
+            align-items: center;
+        }
+    }
+
+    .mask_info_name {
+        height: fit-content;
+        position: relative;
+
+        input {
+            font-family: inherit;
+            font-size: 13px;
+            text-overflow: ellipsis;
+            overflow: hidden;
+            width: 160px;
+            border: none;
+            background-color: transparent;
+            padding: 0;
+        }
+
+        .mask_name_text {
+            display: block;
+            cursor: default;
+            font-size: 13px;
+            text-overflow: ellipsis;
+            overflow: hidden;
+            width: 160px;
+            white-space: nowrap;
+        }
+
+        .tooltiptext {
+            width: auto;
+            background-color: rgba(0, 0, 0, .8);
+            color: #fff;
+            text-align: center;
+            padding: 2px 4px;
+            border-radius: 4px;
+            /* Position the tooltip text - see examples below! */
+            position: absolute;
+            z-index: 1;
+            opacity: 0;
+            transition: opacity .5s linear .5s;
+            visibility: hidden;
+            position: absolute;
+            top: -50px;
+            left: -20px;
+            max-width: 200px;
+            // transition-delay: 1s;
+        }
+
+        /* Show the tooltip text when you mouse over the tooltip container */
+        &:hover .tooltiptext {
+            opacity: 1;
+            visibility: visible;
+        }
+    }
+}
+
+.icon_container {
+    height: 25px;
+    width: 25px;
+    cursor: pointer;
+
+    & svg {
+        height: 100%;
+        fill: black;
+        stroke-width: 2px;
     }
 }
 
@@ -68,7 +143,8 @@ fieldset legend {
     cursor: pointer;
 }
 
-.trash_icon {
+.trash_icon,
+.edit_icon {
     height: 24px;
     cursor: pointer;
 }

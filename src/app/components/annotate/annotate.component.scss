@@ -2,7 +2,42 @@
     display: flex;
     flex-direction: column;
     height: 100%;
-    width: 100%
+    width: 100%;
+    overflow: hidden;
+}
+
+.icon_container {
+    height: 25px;
+    width: 25px;
+    cursor: pointer;
+
+    & svg {
+        height: 100%;
+        fill: black;
+        stroke-width: 2px;
+    }
+}
+
+#notes {
+    --spacing: 1.5rem;
+    --radius: 10px;
+    padding-left: 0;
+
+    li {
+        display: flex;
+        position: relative;
+        padding-left: calc(2 * var(--spacing) - var(--radius) - 2px);
+        align-items: center;
+    }
+
+    >li:first-child {
+        padding-left: 0;
+    }
+
+    ul {
+        margin-left: calc(var(--radius) - var(--spacing));
+        padding-left: 0;
+    }
 }
 
 #header_bar {
@@ -11,7 +46,23 @@
     flex-direction: column;
     padding: 8px;
 
-    div {
+    button {
+        height: 30px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    #finishShapeConfirm {
+        display: none;
+        width: 80px;
+
+        &.show {
+            display: flex;
+        }
+    }
+
+    .row {
         height: auto;
         display: flex;
         flex-direction: row;
@@ -20,23 +71,20 @@
 
         >* {
             display: flex;
-            align-items: baseline;
+            // align-items: baseline;
             margin-right: 8px;
-
-            select {
-                height: 30px;
-                width: 100px;
-            }
         }
     }
 }
 
 #editor_container {
-    flex: 1 0 auto;
     border: black solid 1px;
     border-radius: 12px;
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
+    padding: 20px;
+    overflow: auto;
+    height: auto;
 
     #editor_canvas_container {
         flex: 0 0 50%;
@@ -74,4 +122,13 @@
             left: 0;
         }
     }
+}
+
+#ref_im {
+    pointer-events: none;
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 400px;
+    z-index: 10;
 }

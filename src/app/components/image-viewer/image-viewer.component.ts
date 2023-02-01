@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, Input, OnInit } from '@angular/core';
 import { ReplaySubject, Subject } from 'rxjs';
 import { COLOR_FILTERS } from 'src/models/color-styles';
+import { Mask } from 'src/models/Database';
 import { ImageSizeInfo } from '../annotate/annotate.component';
 
 @Component({
@@ -18,20 +19,24 @@ export class ImageViewerComponent {
       this._imageData$.next(im)
     }
   }
-  _visibleMasks$ = new ReplaySubject<{ id: number; bitmap: string; color: { hex: string; filter: string } }[]>(1);
+  _visibleMasks$ = new ReplaySubject<Mask[]>(1);
   visibleMasks$ = this._visibleMasks$.asObservable();
-  @Input() set visibleMasks(visibleMasks: { id: number; bitmap: string; color: { hex: string; filter: string } }[] | null) {
-    if (visibleMasks) {
+  @Input() set visibleMasks(visibleMasks: Mask[] | null | undefined) {
+    if (visibleMasks !== null && visibleMasks !== undefined) {
       this._visibleMasks$.next(visibleMasks)
     }
   }
+
+  @Input() imgClass = ''
+  @Input() maskClass = ''
+  @Input() maskOverlayClass = ''
 
   @Input() selectedMaskId: number | null | undefined;
 
   @Input() maskOpacity: number | null = 1;
   @Input() imageSizeInfo: ImageSizeInfo | null;
 
-  trackBy(index: number) {
-    return index
+  trackBy(index: number, e: Mask) {
+    return e.pk
   }
 }

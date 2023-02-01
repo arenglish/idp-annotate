@@ -1,22 +1,170 @@
-<div id="view_container">
+<div id="view_container" *ngIf="annotationMode$ | async">
     <div id="header_bar">
-        <ng-container [ngSwitch]="(state.annotation.tool$ | async)!.type">
-            <div *ngSwitchDefault>Note: Use mouse or touch device to draw mask. (Use subtraction mode for
-                erasing).</div>
-            <div *ngSwitchCase="toolTypes.FILL">Note: Click setpoints to define a shape to be filled.
-                Alternatively, use a
-                stylus device to draw a freeform shape. Double-click for the last point to finish and fill.
+        <ul id="notes">
+            <li>
+                <details>
+                    <summary>Annotation Notes</summary>
+                    <ul>
+                        <li>
+                            <details>
+                                <summary>Mask List</summary>
+                                <ul>
+                                    <li>
+                                        <div class="icon_container">
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+                                                <path
+                                                    d="M24 31.5q3.55 0 6.025-2.475Q32.5 26.55 32.5 23q0-3.55-2.475-6.025Q27.55 14.5 24 14.5q-3.55 0-6.025 2.475Q15.5 19.45 15.5 23q0 3.55 2.475 6.025Q20.45 31.5 24 31.5Zm0-2.9q-2.35 0-3.975-1.625T18.4 23q0-2.35 1.625-3.975T24 17.4q2.35 0 3.975 1.625T29.6 23q0 2.35-1.625 3.975T24 28.6Zm0 9.4q-7.3 0-13.2-4.15Q4.9 29.7 2 23q2.9-6.7 8.8-10.85Q16.7 8 24 8q7.3 0 13.2 4.15Q43.1 16.3 46 23q-2.9 6.7-8.8 10.85Q31.3 38 24 38Zm0-15Zm0 12q6.05 0 11.125-3.275T42.85 23q-2.65-5.45-7.725-8.725Q30.05 11 24 11t-11.125 3.275Q7.8 17.55 5.1 23q2.7 5.45 7.775 8.725Q17.95 35 24 35Z" />
+                                            </svg>
+                                        </div>
+
+                                        <!-- <img width="20" [src]="visibilityIcon"> -->
+                                        : toggle mask visibility
+                                    </li>
+                                    <li>
+                                        <div class="icon_container">
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+                                                <path
+                                                    d="M9 39h2.2l22.15-22.15-2.2-2.2L9 36.8Zm30.7-24.3-6.4-6.4 2.1-2.1q.85-.85 2.1-.85t2.1.85l2.2 2.2q.85.85.85 2.1t-.85 2.1Zm-2.1 2.1L12.4 42H6v-6.4l25.2-25.2Zm-5.35-1.05-1.1-1.1 2.2 2.2Z" />
+                                            </svg>
+                                        </div>
+                                        <!-- <img width="20" [src]="editIcon"> -->
+                                        : edit a mask
+                                    </li>
+                                    <li>
+                                        <div class="icon_container">
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"
+                                                viewBox="0 0 48 48">
+                                                <path
+                                                    d="M13.05 42q-1.25 0-2.125-.875T10.05 39V10.5H8v-3h9.4V6h13.2v1.5H40v3h-2.05V39q0 1.2-.9 2.1-.9.9-2.1.9Zm21.9-31.5h-21.9V39h21.9Zm-16.6 24.2h3V14.75h-3Zm8.3 0h3V14.75h-3Zm-13.6-24.2V39Z" />
+                                            </svg>
+                                        </div>
+                                        <!-- <img width="20" [src]="trashIcon"> -->
+                                        : delete a mask
+                                    </li>
+                                    <li>
+                                        In edit mode, click on the mask name to change it
+                                    </li>
+                                </ul>
+                            </details>
+                        </li>
+                        <li>
+                            <details>
+                                <summary>Drawing</summary>
+                                <ul>
+                                    <li>
+                                        <div class="icon_container">
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+                                                <path
+                                                    d="M28 42q-.6 0-1.05-.45-.45-.45-.45-1.05 0-.65.45-1.075Q27.4 39 28 39q2.95 0 4.975-1.2Q35 36.6 35 35q0-1.15-1.475-2.25t-3.975-1.7l2.35-2.35q3.15.95 4.625 2.625T38 35q0 3.35-3.05 5.175Q31.9 42 28 42ZM12 27.3q-3.2-.7-4.6-2.2Q6 23.6 6 22q0-1.75 1.3-3.15t6-3.1q3.3-1.2 4.25-1.95.95-.75.95-1.75 0-1.25-1.1-2.15Q16.3 9 14 9q-1.35 0-2.3.35-.95.35-1.7 1.1-.4.4-1.025.475Q8.35 11 7.85 10.6q-.55-.4-.575-1-.025-.6.375-1.05.85-1.1 2.55-1.825Q11.9 6 14 6q3.4 0 5.45 1.625Q21.5 9.25 21.5 12.05q0 2.05-1.425 3.475Q18.65 16.95 14.5 18.5q-3.35 1.25-4.425 1.975Q9 21.2 9 22q0 .8 1.35 1.525 1.35.725 4.05 1.375Zm24.8-7.7-6.4-6.4 2.25-2.25q.9-.9 2-.9t2 .9l2.4 2.4q.9.9.9 2t-.9 2ZM11 39h2.1l17.25-17.25-2.1-2.1L11 36.9Zm-3 3v-6.4l20.25-20.25 6.4 6.4L14.4 42Zm20.25-22.35 2.1 2.1Z" />
+                                            </svg>
+                                        </div>
+                                        <!-- <img width="20" [src]="drawIcon"> -->
+                                        : select Brush Tool
+                                    </li>
+                                    <li>
+                                        <div class="icon_container">
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+                                                <path
+                                                    d="M31 44v-4.75L15.5 31.5H6v-11h8.75l6.25-7V4h11v11h-8.3L17 22.5v6.45l14 6.95V33h11v11Zm-7-32h5V7h-5ZM9 28.5h5v-5H9ZM34 41h5v-5h-5ZM26.5 9.5ZM11.5 26Zm25 12.5Z" />
+                                            </svg>
+                                        </div>
+                                        <!-- <img width="20" [src]="polyIcon"> -->
+                                        : select Precision Polygon Tool
+                                    </li>
+                                    <li>
+                                        <div class="icon_container">
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+                                                <path
+                                                    d="M22.65 34h3v-8.3H34v-3h-8.35V14h-3v8.7H14v3h8.65ZM24 44q-4.1 0-7.75-1.575-3.65-1.575-6.375-4.3-2.725-2.725-4.3-6.375Q4 28.1 4 23.95q0-4.1 1.575-7.75 1.575-3.65 4.3-6.35 2.725-2.7 6.375-4.275Q19.9 4 24.05 4q4.1 0 7.75 1.575 3.65 1.575 6.35 4.275 2.7 2.7 4.275 6.35Q44 19.85 44 24q0 4.1-1.575 7.75-1.575 3.65-4.275 6.375t-6.35 4.3Q28.15 44 24 44Zm.05-3q7.05 0 12-4.975T41 23.95q0-7.05-4.95-12T24 7q-7.05 0-12.025 4.95Q7 16.9 7 24q0 7.05 4.975 12.025Q16.95 41 24.05 41ZM24 24Z" />
+                                            </svg>
+                                        </div>
+                                        <!-- <img width="20" [src]="addIcon"> -->
+                                        : add to mask
+                                    </li>
+                                    <li>
+                                        <div class="icon_container">
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+                                                <path d="M10 25.5v-3h28v3Z" />
+                                            </svg>
+                                        </div>
+                                        <!-- <img width="20" [src]="subtractIcon"> -->
+                                        : subtract from mask
+                                    </li>
+                                    <li>
+                                        Use the Brush Size slider to change the tool radius if using the brush tool
+                                    </li>
+                                    <li>
+                                        Use the Mask Opacity slider to adjust the opacity of displayed masks
+                                    </li>
+                                </ul>
+                            </details>
+                        </li>
+                        <li>
+                            <details>
+                                <summary>General</summary>
+                                <ul>
+                                    <li>
+                                        Use Reset button to remove unsaved mask alpha changes
+                                    </li>
+                                    <li>
+                                        Use Save button to Save mask edits to the database
+                                    </li>
+                                </ul>
+                            </details>
+                        </li>
+                    </ul>
+                </details>
+            </li>
+        </ul>
+
+        <ng-container *ngIf="(selectedMask$ | async) !== null">
+            <ng-container [ngSwitch]="(state.annotation.tool$ | async)!.type">
+                <div class="row" *ngSwitchDefault>Tool Note: Use mouse or touch device to draw mask. (Use subtraction
+                    mode for
+                    erasing).</div>
+                <div class="row" *ngSwitchCase="toolTypes.FILL">Tool Note: Click setpoints to define a shape to be
+                    filled.
+                    Alternately, use a
+                    stylus device to draw a freeform shape. Double-click or click the Fill/Subtract button to finish and
+                    fill.
+                </div>
+            </ng-container>
+            <div class="row">
+                <div>
+                    <button (click)="canvasComponent.reset()">
+                        <div>Reset</div>
+                    </button>
+                </div>
+                <div>
+                    <button (click)="canvasComponent.saveCanvas()">
+                        <div>Save</div>
+                    </button>
+                </div>
+                <div>
+                    <button (click)="toggleReferenceIm()">
+                        <div *ngIf="showRefIm === false">View Ref Image</div>
+                        <div *ngIf="showRefIm === true">Hide Ref Image</div>
+                    </button>
+                </div>
+                <div>
+                    <button id="finishShapeConfirm" [class.show]="(canvasComponent.shapeDrawPointCount || 0) > 2"
+                        (click)="canvasComponent.fillCurrentShape()">
+                        <div>{{(state.annotation.tool$ | async)?.mode === toolModes.ADD ? 'Fill' : 'Subtract'}}</div>
+                    </button>
+                </div>
             </div>
         </ng-container>
-        <div>
-            <div>
-                <button (click)="canvasComponent.reset()">Reset</button>
-            </div>
-            <div>
-                <button (click)="canvasComponent.saveCanvas()">Save</button>
+        <ng-container *ngIf="(selectedMask$ | async) === null">
+            <div [style.display]="'flex'">
+                <div> Please select a mask to edit with the</div>
+                <span class="icon_container"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+                        <path
+                            d="M9 39h2.2l22.15-22.15-2.2-2.2L9 36.8Zm30.7-24.3-6.4-6.4 2.1-2.1q.85-.85 2.1-.85t2.1.85l2.2 2.2q.85.85.85 2.1t-.85 2.1Zm-2.1 2.1L12.4 42H6v-6.4l25.2-25.2Zm-5.35-1.05-1.1-1.1 2.2 2.2Z" />
+                    </svg></span>
+                <div> icon.</div>
             </div>
 
-        </div>
+        </ng-container>
 
     </div>
     <div id="editor_container">
@@ -29,6 +177,9 @@
                 <ng-content *ngTemplateOutlet="canvasTemplate"></ng-content>
             </app-image-viewer>
 
+        </div>
+        <div *ngIf="showRefIm" id="ref_im">
+            <img [src]="(selectedImage$ | async)?.rgb | serverAssetPrefix" width="100%">
         </div>
     </div>
 </div>

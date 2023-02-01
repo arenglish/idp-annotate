@@ -9,8 +9,9 @@ import { StateService } from 'src/services/state.service';
 import { AnnotateState } from 'src/app/state/annotate/annotate.state';
 import { FullState } from 'src/app/state/main';
 import { MaskEntityActions } from 'src/app/state/entities/masks.entities';
-import { ANNOTATION_TOOLS } from 'src/models/annotation_tools';
+import { ANNOTATION_TOOLS, ANNOTATION_TOOL_MODES } from 'src/models/annotation_tools';
 import { getServerAssetUrl } from 'src/app/pipes/server-asset.pipe';
+import { getStaticAssetUrl } from 'src/app/pipes/app-asset.pipe';
 
 export interface ImageSizeInfo {
   id: number;
@@ -29,10 +30,17 @@ export interface ImageSizeInfo {
   styleUrls: ['./annotate.component.scss']
 })
 export class AnnotateComponent implements OnDestroy {
+  editIcon = getStaticAssetUrl('assets/svg/edit.svg')
+  trashIcon = getStaticAssetUrl('assets/svg/trash.svg')
+  visibilityIcon = getStaticAssetUrl('assets/svg/visibility_on.svg')
+  drawIcon = getStaticAssetUrl('assets/svg/draw.svg')
+  polyIcon = getStaticAssetUrl('assets/svg/poly_line.svg')
+  addIcon = getStaticAssetUrl('assets/svg/plus_circle.svg')
+  subtractIcon = getStaticAssetUrl('assets/svg/minus.svg')
   toolTypes = ANNOTATION_TOOLS;
   brushSize$: Observable<number>;
   selectedImage$: Observable<SpectralImageSlim>;
-  selectedMask$: Observable<Mask>;
+  selectedMask$: Observable<Mask | null>;
   annotationState$: Observable<AnnotateState>;
   sliderOptions: Options = {
     floor: 0,
@@ -41,19 +49,38 @@ export class AnnotateComponent implements OnDestroy {
   imageMeta$: Observable<ImageSizeInfo>;
   maxImageWidth = 1200;
   @ViewChild(CanvasComponent) canvasComponent: CanvasComponent;
-  visibleMasksData$: Observable<{ id: number; bitmap: string; color: { hex: string; filter: string } }[]>;
+  visibleMasksData$: Observable<Mask[]>;
   imageZoom$: Observable<number>;
   subscriptions: Subscription[] = []
+  toolModes = ANNOTATION_TOOL_MODES
+  showRefIm = false;
+  annotationMode$: Observable<boolean>;
 
 
   constructor(private store: Store<FullState>, public state: StateService) {
+    this.annotationMode$ = this.store.select(state => state.app.annotationIsActive)
+
+    this.subscriptions.push(this.annotationMode$.pipe(tap(active => !active && this.canvasComponent ? this.canvasComponent.reset() : null)).subscribe())
     this.subscriptions.push(
       this.state.annotation.mergeMasks$.pipe(
         switchMap(op => {
           if (op) {
             return this.state.annotation.masks$.pipe(
+              first(),
               map(masks => masks.find(m => m.id == op.mask2Id)),
-              tap(mask => this.canvasComponent.mergeExternalImage(getServerAssetUrl(mask?.bitmap || '')))
+              switchMap(mask => {
+                if (mask) {
+                  this.canvasComponent.mergeExternalImage(getServerAssetUrl(mask?.bitmap || ''))
+                  return this.canvasComponent.saveCanvas(false).pipe(
+                    tap(maskData => {
+                      return this.updateMaskData(maskData)
+                    })
+                  )
+
+                } else {
+                  return of()
+                }
+              })
             )
           }
           else {
@@ -90,26 +117,29 @@ export class AnnotateComponent implements OnDestroy {
       shareReplay(1)
     )
 
-    this.visibleMasksData$ = combineLatest([this.state.annotation.masks$, this.state.annotation.maskColors$, this.state.annotation.showMaskIds$]).pipe(
-      map(([masks, colors, maskIds]) => {
+    this.visibleMasksData$ = combineLatest([this.state.annotation.masks$, this.state.annotation.showMaskIds$]).pipe(
+      map(([masks, maskIds]) => {
         return maskIds.map(id => {
           const maskIdx = findIndex(masks, m => m.id == id)
-          return {
-            id,
-            bitmap: get(masks, [maskIdx, 'bitmap']),
-            color: colors[maskIdx]
-          }
-        })
-      })
+          return get(masks, [maskIdx]) as Mask
+        }).filter(m => !!m)
+      }), shareReplay(1)
     )
 
   }
 
-  updateMaskData(maskData: { id: number; data: string }) {
+  toggleReferenceIm() {
+    this.showRefIm = !this.showRefIm;
+  }
+
+  updateMaskData(maskData: { id: number; data: string }, deleteMaskOfIdOnSuccess?: number) {
     this.selectedMask$.pipe(
       first(),
       withLatestFrom(this.selectedImage$),
       tap(([mask, spim]) => {
+        if (!mask) {
+          return
+        }
         if (mask.id < 0) {
           this.store.dispatch(MaskEntityActions.requestCreateMask({
             mask: {
@@ -124,7 +154,8 @@ export class AnnotateComponent implements OnDestroy {
               ...mask,
               bitmap: maskData.data
             },
-            spimId: spim.id
+            spimId: spim.id,
+            deleteMaskOfIdOnSuccess
           }))
         }
 

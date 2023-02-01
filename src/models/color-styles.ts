@@ -65,4 +65,5 @@ export const COLOR_FILTERS = [
     }
 ]
 
-export const COLORS = COLOR_FILTERS.map(c => c.hex)
+export let COLORS = COLOR_FILTERS.map(c => c.hex)
+COLORS = [...COLORS, ...COLORS, ...COLORS, ...COLORS, ...COLORS]

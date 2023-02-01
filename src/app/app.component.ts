@@ -13,7 +13,8 @@ import { FullState } from './state/main';
 export class AppComponent {
   title = 'hsi_annotate';
   mode$: BehaviorSubject<{ name: string, route: string }>;
-  modes = [{ name: 'Upload', route: 'upload' }, { name: 'Browse', route: 'browse' }];
+  // modes = [{ name: 'Upload', route: 'upload' }, { name: 'Browse', route: 'browse' }];
+  modes = [{ name: 'Browse', route: 'browse' }];
   annotationMode$: Observable<boolean>;
 
   constructor(private store: Store<FullState>, private router: Router, public state: StateService) {

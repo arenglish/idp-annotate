@@ -1,13 +1,20 @@
 import { Injectable } from "@angular/core";
 import { HttpClient } from '@angular/common/http';
-import { GetSpim, GetSpims } from "src/models/Requests";
+import { GenerateMasksPOST, GetSpim, GetSpims, GetTissueClasses } from "src/models/Requests";
 import { environment } from "src/environments/environment";
 import { from, map, switchMap } from "rxjs";
 import { Mask } from "src/models/Database";
+import { get } from "lodash";
+import { COLORS } from "src/models/color-styles";
+import { SEGMENTATION_METHODS } from "src/models/segmentation";
 
 @Injectable()
 export class AppService {
     constructor(private http: HttpClient) { }
+
+    getTissueClasses() {
+        return this.http.get<GetTissueClasses>(environment.urls.tissueClasses)
+    }
 
     getSpims() {
         // return this.http.get<GetSpims>('/assets/data/spims.json').pipe(map(res => {
@@ -17,7 +24,10 @@ export class AppService {
                 spims: res.spims.map(s => {
                     return {
                         ...s,
-                        id: s.pk!
+                        id: s.pk!,
+                        masks: get(s, 'masks', []).map((m, idx) => {
+                            return { ...m, color: COLORS[idx] }
+                        })
                     }
                 })
             }
@@ -40,6 +50,10 @@ export class AppService {
         }))
     }
 
+    deleteSpim(spimId: number) {
+        return this.http.delete(environment.urls.spim.replace('{spimId}', spimId.toString()) + '/delete')
+    }
+
     deleteMask(maskId: number) {
         return this.http.delete(environment.urls.mask.replace('{maskId}', maskId.toString()) + '/delete')
     }
@@ -52,7 +66,23 @@ export class AppService {
             switchMap(maskFile => {
                 const form = new FormData()
                 form.append('maskFile', maskFile)
-                return this.http.post<Mask>(environment.urls.mask.replace('{maskId}', mask.id.toString()) + '/update', maskFile)
+                return this.http.post<Mask>(environment.urls.mask.replace('{maskId}', mask.id.toString()) + '/update/' + (mask.name || ''), maskFile)
+            })
+        )
+    }
+
+    generateSegmentedMasks(spimId: number, segmentType?: SEGMENTATION_METHODS) {
+        return this.http.post<GenerateMasksPOST>(segmentType ? environment.urls.autosegWithType.replace('{spimId}', spimId.toString()).replace('{typeId}', segmentType.toString()) : environment.urls.autoseg.replace('{spimId}', spimId.toString()), {}).pipe(
+            map(res => {
+                return {
+                    ...res,
+                    masks: res.masks.map((m, idx) => {
+                        return {
+                            ...m,
+                            color: COLORS[idx]
+                        }
+                    })
+                }
             })
         )
     }

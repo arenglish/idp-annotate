@@ -9,14 +9,17 @@ import { selectMaskForAnnotation } from "../annotate/annotate.actions";
 const loadMasks = createAction('[Masks] Load Masks', props<{ masks: Mask[] }>());
 const removeMask = createAction('[Masks] Remove Mask', props<{ maskId: number }>());
 const createMask = createAction('[Masks] Create Mask');
-const updateMask = createAction('[Masks] Update Mask', props<{ mask: Mask, id: number }>());
+const updateMask = createAction('[Masks] Update Mask', props<{ mask: Pick<Mask, 'id'> & Partial<Mask>, id: number }>());
 const requestCreateMask = createAction('[Masks] Request Create Mask', props<{ mask: Mask, spimId: number }>());
 const requestDeleteMask = createAction('[Masks] Request Delete Mask', props<{ maskId: number }>());
-const requestUpdateMask = createAction('[Masks] Request Update Mask', props<{ mask: Mask, spimId: number }>());
+const requestUpdateMask = createAction('[Masks] Request Update Mask', props<{ mask: Mask, spimId: number, deleteMaskOfIdOnSuccess?: number }>());
 const mergeMasks = createAction('[Masks] Merge Masks', props<{ mask1Id: number, mask2Id: number }>())
+const clearMasks = createAction('[Masks] Clear All Masks')
+
 
 export const MaskEntityActions = {
     loadMasks,
+    clearMasks,
     removeMask,
     createMask,
     updateMask,
@@ -79,6 +82,9 @@ export const maskEntitiesReducer = createReducer(initialState,
             ...state,
             selectedMaskId: action.id
         }
+    }),
+    on(clearMasks, (state, action) => {
+        return adapter.removeAll(state)
     })
 )
 

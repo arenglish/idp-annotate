@@ -4,6 +4,7 @@ import { uniq } from "lodash";
 import { ANNOTATION_TOOLS, ANNOTATION_TOOL_MODES, Brush } from "src/models/annotation_tools";
 import { COLOR_FILTERS } from "src/models/color-styles";
 import { Mask } from "src/models/Database";
+import { MaskEntityActions } from "../entities/masks.entities";
 import { selectMaskForAnnotation, selectMasksForAnnotationView, setAnnotationImageZoom, setBrushMode, setBrushSize, setBrushType, setMaskColor, setMaskOpacity } from "./annotate.actions";
 
 export interface AnnotateState extends EntityState<Mask> {
@@ -50,7 +51,16 @@ export const annotateReducer = createReducer(
         return { ...state, selectedMaskIdsForView: showIds }
     }),
     on(selectMasksForAnnotationView, (state, action) => {
-        return { ...state, selectedMaskIdsForView: action.ids }
+        return { ...state, selectedMaskIdsForView: [...action.ids] }
+    }),
+    on(MaskEntityActions.updateMask, (state, action) => {
+        if (action.mask.id == action.id) {
+            return state
+        }
+
+        const ids = [...state.selectedMaskIdsForView]
+        ids.splice(ids.indexOf(action.id), 1, action.mask.id)
+        return { ...state, selectedMaskIdsForView: ids }
     }),
     on(setMaskColor, (state, action) => {
         const maskColors = [...state.maskColors]

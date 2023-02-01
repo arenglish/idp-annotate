@@ -6,20 +6,22 @@ let _e = {
   // apiUrl: '/assets/data',
   apiHost: 'http://localhost:8000',
 
-  appAssetsPath: 'assets',
+  appAssetsPath: '',
   uploadPath: 'upload',
   urlPaths: {
     api: 'api',
     spims: 'spims',
     spim: 'spim',
     mask: 'mask',
-    upload: 'upload'
+    upload: 'upload',
+    tissueClass: 'tissueclass',
+    autoseg: 'autoseg'
   }
 }
 
 const _e2 = {
   ..._e,
-  serverAssetsPath: _e.apiHost,
+  serverAssetsPath: `${_e.apiHost}`,
   urls: {
     api: `${_e.apiHost}/${_e.urlPaths.api}`
   }
@@ -31,6 +33,9 @@ export let environment = {
 
   urls: {
     ..._e2.urls,
+    autoseg: `${_e2.urls.api}/${_e2.urlPaths.spim}/{spimId}/${_e2.urlPaths.autoseg}`,
+    autosegWithType: `${_e2.urls.api}/${_e2.urlPaths.spim}/{spimId}/${_e2.urlPaths.autoseg}/{typeId}`,
+    tissueClasses: `${_e2.urls.api}/${_e.urlPaths.tissueClass}`,
     spims: `${_e2.urls.api}/${_e.urlPaths.spims}`,
     spim: `${_e2.urls.api}/${_e.urlPaths.spim}/{spimId}`,
     mask: `${_e2.urls.api}/${_e.urlPaths.mask}/{maskId}`,

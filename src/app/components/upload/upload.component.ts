@@ -1,5 +1,5 @@
 import { Component, EventEmitter, OnInit, TemplateRef, ViewChild } from '@angular/core';
-import { AbstractControl, FormArray, FormBuilder, FormControl, FormGroup } from '@angular/forms';
+import { AbstractControl, UntypedFormArray, FormBuilder, UntypedFormControl, UntypedFormGroup } from '@angular/forms';
 import { Store } from '@ngrx/store';
 import { UploadOutput, UploadInput, UploadFile, humanizeBytes, UploaderOptions, UploadStatus } from 'ngx-uploader';
 import { BehaviorSubject, filter, first, map, Observable, OperatorFunction, single, startWith, Subject, tap } from 'rxjs';
@@ -12,31 +12,31 @@ type FileGroupFormData = {
   files: UploadFile[];
   imageId: string;
 }
-class FileGroupForm extends FormGroup {
+class FileGroupForm extends UntypedFormGroup {
   override controls: {
-    files: FormArray;
-    imageId: FormControl;
-    originalImageId: FormControl;
+    files: UntypedFormArray;
+    imageId: UntypedFormControl;
+    originalImageId: UntypedFormControl;
   } = {
-      files: new FormArray([]),
-      imageId: new FormControl(),
-      originalImageId: new FormControl()
+      files: new UntypedFormArray([]),
+      imageId: new UntypedFormControl(),
+      originalImageId: new UntypedFormControl()
     }
   constructor(init: FileGroupFormData) {
     super({})
     get(init, 'files', []).forEach(file => {
-      this.controls.files.push(new FormControl(file))
+      this.controls.files.push(new UntypedFormControl(file))
     })
     this.controls.imageId.setValue(get(init, 'imageId'))
     this.controls.originalImageId.setValue(get(init, 'imageId'))
   }
 }
 
-class FileFormArray extends FormArray {
+class FileFormArray extends UntypedFormArray {
   override controls: FileGroupForm[] = [] as FileGroupForm[];
 }
 
-class UploadForm extends FormGroup {
+class UploadForm extends UntypedFormGroup {
   override controls: {
     images: FileFormArray
   } = { images: new FileFormArray([]) }
@@ -128,7 +128,7 @@ export class UploadComponent {
             if (typeof output.file !== 'undefined') {
               const formGroup = this.getInitialFileGroup(output.file)
               if (formGroup) {
-                formGroup.controls.files.push(new FormControl(output.file))
+                formGroup.controls.files.push(new UntypedFormControl(output.file))
               }
               else {
                 const f = new FileGroupForm({

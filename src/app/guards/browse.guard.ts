@@ -4,6 +4,7 @@ import { Store } from "@ngrx/store";
 import { StateService } from "src/services/state.service";
 import { ImageEntityActions } from "../state/entities/images.entities";
 import { FullState } from "../state/main";
+import { requestTissueClasses } from "../state/main/actions";
 
 @Injectable()
 export class BrowseComponentGuard implements CanActivate {
@@ -11,6 +12,8 @@ export class BrowseComponentGuard implements CanActivate {
 
     canActivate(): boolean {
         this.store.dispatch(ImageEntityActions.requestImages())
+        this.store.dispatch(requestTissueClasses())
+
         return true;
     }
 }

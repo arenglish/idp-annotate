@@ -64,3 +64,6 @@ export const COLOR_FILTERS = [
         filter: 'brightness(1) sepia(1) saturate(10000%) hue-rotate(270deg)',
     }
 ]
+
+export let COLORS = COLOR_FILTERS.map(c => c.hex)
+COLORS = [...COLORS, ...COLORS, ...COLORS, ...COLORS, ...COLORS]

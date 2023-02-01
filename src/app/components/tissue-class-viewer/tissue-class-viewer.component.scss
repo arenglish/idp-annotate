@@ -1,0 +1,20 @@
+#tissue_class_select {
+    border: solid black 1px;
+    background-color: rgba(255, 255, 255, .3);
+    border-radius: 4px;
+    outline: none;
+
+    option {
+        display: flex;
+        flex-direction: row;
+        outline: none;
+        align-items: center;
+        justify-content: space-between;
+    }
+}
+
+.color_patch {
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+}

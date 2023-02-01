@@ -1,7 +1,9 @@
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, ElementRef, EventEmitter, Input, Output, ViewChild } from '@angular/core';
-import { BehaviorSubject, bufferTime, combineLatest, exhaustMap, filter, first, forkJoin, fromEvent, iif, interval, map, merge, mergeWith, Observable, of, pairwise, ReplaySubject, shareReplay, skipUntil, skipWhile, startWith, Subject, Subscription, switchMap, takeUntil, takeWhile, tap, timer, withLatestFrom, zip } from 'rxjs';
+import { ChangeDetectionStrategy, Component, ElementRef, EventEmitter, Input, Output, ViewChild } from '@angular/core';
+import { BehaviorSubject, bufferTime, combineLatest, exhaustMap, filter, finalize, first, fromEvent, map, merge, mergeWith, Observable, of, pairwise, ReplaySubject, shareReplay, skipUntil, skipWhile, startWith, Subject, Subscription, switchMap, takeUntil, takeWhile, tap, timer, withLatestFrom, zip } from 'rxjs';
+import { getServerAssetUrl } from 'src/app/pipes/server-asset.pipe';
 import { ANNOTATION_TOOLS, ANNOTATION_TOOL_MODES, Brush } from 'src/models/annotation_tools';
 import { Mask } from 'src/models/Database';
+import { hexToRgb } from 'src/utils/color';
 import { ImageSizeInfo } from '../annotate/annotate.component';
 
 declare global {
@@ -23,6 +25,9 @@ enum EVENT_TYPES {
 }
 
 type EventInfo = { event: MouseEvent | TouchEvent; coords: { x: number; y: number } }
+type FillShapeEvent = 'Fill'
+const FILL_SHAPE = 'Fill'
+
 @Component({
   selector: 'app-canvas',
   templateUrl: './canvas.component.html',
@@ -30,7 +35,7 @@ type EventInfo = { event: MouseEvent | TouchEvent; coords: { x: number; y: numbe
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class CanvasComponent {
-  private defaultGlobalCompositeOperation: GlobalCompositeOperation = 'source-over'
+  private defaultGlobalCompositeOperation: any = 'source-over'
   private _tool$: BehaviorSubject<Brush> = new BehaviorSubject(DEFAULT_TOOL);
   public tool$: Observable<Brush> = this._tool$.asObservable();
   @Input() set tool(tool: Brush | null) {
@@ -40,6 +45,12 @@ export class CanvasComponent {
         size: Math.round((this.imageSizeInfo?.scale || 1) * tool.size)
       })
     }
+  }
+
+  private _disabled$ = new BehaviorSubject(true)
+  public disabled$ = this._disabled$.asObservable()
+  @Input() set disabled(d: boolean) {
+    this._disabled$.next(d)
   }
 
   @ViewChild('canvas') canvas: ElementRef;
@@ -72,8 +83,14 @@ export class CanvasComponent {
     }
   }
 
-  pointerStyle$: Observable<{ class: string; size: number }> = combineLatest([this.tool$, this.imageSizeInfo$]).pipe(
-    map(([tool, imageSizeInfo]) => {
+  pointerStyle$: Observable<{ class: string; size: number }> = combineLatest([this.tool$, this.imageSizeInfo$, this.disabled$]).pipe(
+    map(([tool, imageSizeInfo, disabled]) => {
+      if (disabled) {
+        return {
+          class: 'cursor_disabled',
+          size: 0
+        }
+      }
       switch (tool.type) {
         case ANNOTATION_TOOLS.BRUSH:
           return {
@@ -108,6 +125,9 @@ export class CanvasComponent {
   private cursorUp$: Observable<EventInfo>;
   private cursorDoubleClick$: Observable<EventInfo>;
   private linesToolFinish$: Observable<EventInfo>;
+  public shapeDrawFirstTouchCoord: number[][]
+  public shapeDrawPointCount: number = 0
+  private fillCurrentShape$ = new Subject<FillShapeEvent>()
 
   public reset() {
     this.reset$.next()
@@ -140,6 +160,8 @@ export class CanvasComponent {
         return this.cursorDown$.pipe(
           exhaustMap(e => {
             const points = [[e.coords.x, e.coords.y]]
+            this.shapeDrawFirstTouchCoord = points
+            this.shapeDrawPointCount++
             this.cx.moveTo(points[0][0], points[0][1])
             this.cx.lineWidth = 1.5
             this.cx.strokeStyle = this.toolColor
@@ -181,15 +203,16 @@ export class CanvasComponent {
             //   takeUntil(this.reset$)
             // ).subscribe()
 
-            return merge(this.cursorDown$, this.cursorDoubleClick$, this.touchEnd$, this.touchMove$).pipe(
+            return merge(this.cursorDown$, this.cursorDoubleClick$, this.touchEnd$, this.touchMove$, this.fillCurrentShape$).pipe(
               startWith(e),
               pairwise(),
-              map(events => events as [EventInfo, EventInfo]),
+              map(events => events[1] === FILL_SHAPE ? events as [any, FillShapeEvent] : events as [EventInfo, EventInfo]),
               switchMap(events => {
+                this.shapeDrawPointCount++
                 const cx = this.canvas.nativeElement.getContext('2d')
                 cx.beginPath();
 
-                if (events[1].event.detail === 2) {
+                if (events[1] === FILL_SHAPE || events[1].event.detail === 2) {
                   this.cx.clearRect(0, 0, this.canvas.nativeElement.width, this.canvas.nativeElement.height);
                   return zip([of(events), this.drawImToCanvas(this.canvas.nativeElement.getContext('2d'), canvasOriginal).pipe(
                     tap(() => {
@@ -207,7 +230,7 @@ export class CanvasComponent {
                   })
                 )])
               }),
-              filter(([events]) => events[1].event.detail !== 2),
+              filter(([events]) => events[1] === FILL_SHAPE || events[1].event.detail !== 2),
               bufferTime(8),
               withLatestFrom(this.tool$),
               switchMap(([args, tool]) => {
@@ -222,13 +245,18 @@ export class CanvasComponent {
                 )
               }),
               takeUntil(done$),
-              takeUntil(this.reset$)
+              takeUntil(this.reset$),
+              finalize(() => this.shapeDrawPointCount = 0)
             )
           })
         )
       default:
         return of(null)
     }
+  }
+
+  fillCurrentShape() {
+    this.fillCurrentShape$.next(FILL_SHAPE)
   }
 
   private getEventPosition(event: MouseEvent | TouchEvent) {
@@ -343,19 +371,24 @@ export class CanvasComponent {
     this.cx.strokeStyle = this.toolColor;
 
     this.subscriptions.push(
-      this.tool$.pipe(switchMap(tool => this.getToolEventFlow(tool))).subscribe()
+      combineLatest([this.tool$, this.disabled$]).pipe(switchMap(([tool, disabled]) => disabled ? of() : this.getToolEventFlow(tool))).subscribe()
     )
 
     this.subscriptions.push(combineLatest([this.selectedMask$, this.reset$.pipe(startWith(null))]).pipe(
       tap(([mask, reset]) => {
-        this.toolColor = mask.color || this.defaultToolColor
+        // this.toolColor = mask.color || this.defaultToolColor
         this.resetCanvas(mask.bitmap);
       })
     ).subscribe())
   }
 
-  drawImToCanvas(cx: CanvasRenderingContext2D, imSrc: string, compositionOperation: GlobalCompositeOperation = 'source-over') {
+  mergeExternalImage(imSrc: string, compositionOperation: any = 'source-over') {
+    this.drawImToCanvas(this.cx, imSrc, compositionOperation)
+  }
+
+  drawImToCanvas(cx: CanvasRenderingContext2D, imSrc: string, compositionOperation: any = 'source-over') {
     const im = new Image();
+    im.crossOrigin = "anonymous";
 
     const subj = new Subject<void>()
     fromEvent(im, 'load').pipe(
@@ -371,28 +404,53 @@ export class CanvasComponent {
     return subj;
   }
 
-  saveCanvas() {
-    const data = this.canvas.nativeElement.toDataURL("image/png")
-
+  saveCanvas(emit = true) {
+    const sub = new ReplaySubject<{ id: number; data: string }>(1)
     this.selectedMask$.pipe(
       first(),
       withLatestFrom(this.imageSizeInfo$),
       tap(([mask, sizeInfo]) => {
-        const updatedMask = {
-          id: mask.id,
-          data
+        const image = this.cx.getImageData(0, 0, sizeInfo.resolution.width, sizeInfo.resolution.height);
+        const { data } = image;
+        const { length } = data;
+        const rgb = hexToRgb(mask.color!)
+
+        // ensure image alpha is binary before saving
+        for (let i = 0; i < length; i += 4) {
+          const a = data[i + 3];
+
+          if (a > 0) {
+            data[i + 0] = 255;
+            data[i + 1] = 255;
+            data[i + 2] = 255;
+            data[i + 3] = 255;
+          }
         }
 
-        this._updateMaskData.emit(updatedMask)
+        this.clearCanvas(this.canvas.nativeElement)
+        this.clearCanvas(this.canvasTemp.nativeElement)
+        this.cx.putImageData(image, 0, 0);
+        const dataString: string = this.canvas.nativeElement.toDataURL("image/png")
 
-        const png = UPNG.decode(this.cx.getImageData(0, 0, sizeInfo.resolution.width, sizeInfo.resolution.height).data.buffer)
-        const download = document.createElement('a');
-        download.href = data;
-        download.download = 'mask.png';
-        download.click();
+        const updatedMask = {
+          id: mask.id,
+          data: dataString
+        }
+
+        if (emit) {
+          this._updateMaskData.emit(updatedMask)
+        }
+
+        sub.next(updatedMask)
+        // const png = UPNG.decode(this.cx.getImageData(0, 0, sizeInfo.resolution.width, sizeInfo.resolution.height).data.buffer)
+        // const download = document.createElement('a');
+        // download.href = dataString;
+        // download.download = 'mask.png';
+        // download.click();
       })
     ).subscribe()
 
+    return sub
   }
 
   scaleInput(x: number, invert: boolean = true): number {
@@ -406,7 +464,10 @@ export class CanvasComponent {
   private resetCanvas(imSrc: string) {
     this.clearCanvas(this.canvas.nativeElement)
     this.clearCanvas(this.canvasTemp.nativeElement)
-    this.drawImToCanvas(this.canvas.nativeElement.getContext('2d'), imSrc)
+
+    if (imSrc) {
+      this.drawImToCanvas(this.canvas.nativeElement.getContext('2d'), getServerAssetUrl(imSrc))
+    }
   }
 
   ngOnDestroy() {

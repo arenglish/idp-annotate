@@ -1,12 +1,13 @@
 import { Options } from '@angular-slider/ngx-slider';
 import { Component, Input } from '@angular/core';
 import { Store } from '@ngrx/store';
-import { get } from 'lodash';
 import { BehaviorSubject, combineLatest, first, map, Observable, shareReplay, tap } from 'rxjs';
+import { getStaticAssetUrl } from 'src/app/pipes/app-asset.pipe';
 import { selectMaskForAnnotation, selectMasksForAnnotationView, setAnnotationImageZoom } from 'src/app/state/annotate/annotate.actions';
 import { MaskEntityActions } from 'src/app/state/entities/masks.entities';
 import { FullState } from 'src/app/state/main';
-import { Mask, SpectralImageSlim } from 'src/models/Database';
+import { environment } from 'src/environments/environment';
+import { Mask } from 'src/models/Database';
 import { StateService } from 'src/services/state.service';
 
 @Component({
@@ -15,17 +16,20 @@ import { StateService } from 'src/services/state.service';
   styleUrls: ['./annotation-view-options.component.scss']
 })
 export class AnnotationViewOptionsComponent {
+  add_mask_icon = getStaticAssetUrl('assets/svg/plus_circle.svg')
+  trash_icon = getStaticAssetUrl('assets/svg/trash.svg')
+  edit_icon = getStaticAssetUrl('assets/svg/edit.svg')
   visibilityIcons = {
-    visible: '/assets/svg/visibility_on.svg',
-    visibility_disabled: '/assets/svg/visibility_disabled.svg',
-    visibility_off: '/assets/svg/visibility_off.svg'
+    visible: getStaticAssetUrl('assets/svg/visibility_on.svg'),
+    visibility_disabled: getStaticAssetUrl('assets/svg/visibility_disabled.svg'),
+    visibility_off: getStaticAssetUrl('assets/svg/visibility_off.svg')
   }
   private _masks$ = new BehaviorSubject<Mask[]>([]);
   public masks$ = this._masks$.asObservable()
   @Input() set masks(m: Mask[]) {
     this._masks$.next(m)
   };
-  public maskIds$ = this.masks$.pipe(map(masks => masks.map(m => m.id)))
+  public maskIds$ = this.masks$.pipe(map((masks: any[]) => masks.map(m => m.id)))
   maskViewData$: Observable<(Mask & { checked: boolean; selected: boolean })[]>
   maskColors$: Observable<string[]>;
   sliderOptions: Options = {
@@ -57,12 +61,44 @@ export class AnnotationViewOptionsComponent {
     this.store.dispatch(selectMaskForAnnotation({ id }));
   }
 
+  onMaskNameChange(event: Event, mask: Mask) {
+    this.store.dispatch(MaskEntityActions.updateMask({
+      mask: {
+        id: mask.id,
+        name: (event.target as any).value
+      },
+      id: mask.id
+    }))
+  }
+
+  maskColorSet(mask: Mask, color: string) {
+    this.masks$.pipe(
+      first(),
+      tap(masks => {
+        const _m = masks.find(m => m.id == mask.id) as Mask
+        this.store.dispatch(MaskEntityActions.updateMask({
+          mask: {
+            ..._m,
+            color
+          },
+          id: mask.id
+        }))
+      }
+      )
+    ).subscribe()
+  }
+
+
   addMaskButtonClicked() {
     this.store.dispatch(MaskEntityActions.createMask())
   }
 
   removeMaskButtonClicked(mask: Mask) {
-    this.store.dispatch(MaskEntityActions.removeMask({ maskId: mask.id }))
+    if (mask.id < 0) {
+      this.store.dispatch(MaskEntityActions.removeMask({ maskId: mask.id }))
+    } else {
+      this.store.dispatch(MaskEntityActions.requestDeleteMask({ maskId: mask.id }))
+    }
   }
 
   onShowMaskSelect(id: number) {

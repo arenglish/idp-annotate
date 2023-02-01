@@ -1,0 +1,6 @@
+<select #select id="tissue_class_select" multiple (change)="onSelectionChange()">
+    <option *ngFor="let ts of state.tissueClasses$ | async" label="{{ ts.tissue_type }}" value="{{ts.pk}}">
+        <div class="color_patch" [style.background-color]="'white'"></div>
+        {{ts.tissue_type}}
+    </option>
+</select>

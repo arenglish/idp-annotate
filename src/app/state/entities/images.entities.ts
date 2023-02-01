@@ -5,13 +5,19 @@ import { SpectralImageSlim } from "src/models/Database";
 const requestImages = createAction('[Images] Request Images');
 const loadImages = createAction('[Images] Load Images', props<{ images: SpectralImageSlim[] }>());
 const loadImage = createAction('[Images] Load Image', props<{ image: SpectralImageSlim }>());
+const updateImage = createAction('[Images] Update Image', props<{ image: Partial<SpectralImageSlim>; id: number }>());
 const setSelectedImageId = createAction('[Images] Set Selected Image Id', props<{ id: number }>());
+const requestDeleteImage = createAction('[Images] Request Delete Image', props<{ id: number }>());
+const removeImage = createAction('[Images] Delete Image', props<{ id: number }>());
 
 export const ImageEntityActions = {
     requestImages,
     loadImages,
     loadImage,
-    setSelectedImageId
+    setSelectedImageId,
+    updateImage,
+    requestDeleteImage,
+    removeImage
 }
 export const adapter: EntityAdapter<SpectralImageSlim> = createEntityAdapter<SpectralImageSlim>();
 
@@ -33,11 +39,29 @@ export const imageEntitiesReducer = createReducer(initialState,
         let s = adapter.removeAll(state)
         return adapter.upsertOne(image, s)
     }),
+    on(removeImage, (state, { id }) => {
+        return adapter.removeOne(id, state)
+    }),
     on(setSelectedImageId, (state, { id }) => {
         return {
             ...state,
             selectedImageId: id
         }
+    }),
+    on(updateImage, (state, action) => {
+        const im = state.entities[action.id]
+        if (im) {
+            return adapter.updateOne({
+                id: action.id,
+                changes: {
+                    ...im,
+                    ...action.image
+                }
+            }, state)
+        } else {
+            return state
+        }
+
     })
 )
 

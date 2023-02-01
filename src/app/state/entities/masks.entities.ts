@@ -2,19 +2,31 @@ import { createEntityAdapter, EntityAdapter } from "@ngrx/entity";
 import { createAction, createFeatureSelector, createReducer, createSelector, on, props } from "@ngrx/store";
 import { COLOR_FILTERS } from "src/models/color-styles";
 import { Mask } from "src/models/Database";
+import { getUniqueColor } from "src/utils/color";
 import { ID_NOT_SET, randomId } from "src/utils/ids";
 import { selectMaskForAnnotation } from "../annotate/annotate.actions";
 
 const loadMasks = createAction('[Masks] Load Masks', props<{ masks: Mask[] }>());
 const removeMask = createAction('[Masks] Remove Mask', props<{ maskId: number }>());
 const createMask = createAction('[Masks] Create Mask');
-const updateMask = createAction('[Masks] Update Mask', props<{ mask: Mask }>());
+const updateMask = createAction('[Masks] Update Mask', props<{ mask: Pick<Mask, 'id'> & Partial<Mask>, id: number }>());
+const requestCreateMask = createAction('[Masks] Request Create Mask', props<{ mask: Mask, spimId: number }>());
+const requestDeleteMask = createAction('[Masks] Request Delete Mask', props<{ maskId: number }>());
+const requestUpdateMask = createAction('[Masks] Request Update Mask', props<{ mask: Mask, spimId: number, deleteMaskOfIdOnSuccess?: number }>());
+const mergeMasks = createAction('[Masks] Merge Masks', props<{ mask1Id: number, mask2Id: number }>())
+const clearMasks = createAction('[Masks] Clear All Masks')
+
 
 export const MaskEntityActions = {
     loadMasks,
+    clearMasks,
     removeMask,
     createMask,
-    updateMask
+    updateMask,
+    requestCreateMask,
+    requestDeleteMask,
+    requestUpdateMask,
+    mergeMasks
 }
 
 const adapter: EntityAdapter<Mask> = createEntityAdapter<Mask>();
@@ -44,7 +56,7 @@ export const maskEntitiesReducer = createReducer(initialState,
             tissueId: ID_NOT_SET,
             classId: ID_NOT_SET,
             bitmap: '',
-            color: COLOR_FILTERS[state.ids.length].hex
+            color: getUniqueColor(state.ids.map(id => state.entities[id]?.color).filter(c => !!c) as string[])
         }, state)
 
         if (s.ids.length === 1) {
@@ -58,7 +70,7 @@ export const maskEntitiesReducer = createReducer(initialState,
     }),
     on(updateMask, (state, action) => {
         return adapter.updateOne({
-            id: action.mask.id,
+            id: action.id,
             changes: action.mask
         }, state)
     }),
@@ -70,6 +82,9 @@ export const maskEntitiesReducer = createReducer(initialState,
             ...state,
             selectedMaskId: action.id
         }
+    }),
+    on(clearMasks, (state, action) => {
+        return adapter.removeAll(state)
     })
 )
 

@@ -9,5 +9,5 @@ export class GetDbStaticAssetPrefix implements PipeTransform {
 }
 
 export function getStaticAssetUrl(assetPath: string): string {
-  return `${environment.apiUrl}/${environment.staticAssetsPath}/${assetPath}`
+  return `${environment.appAssetsPath}/${assetPath}`
 }

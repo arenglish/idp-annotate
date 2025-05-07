@@ -9,7 +9,7 @@ import { BrowseComponentGuard } from './guards/browse.guard';
 const routes: Routes = [
   {
     path: '',
-    redirectTo: '/upload',
+    redirectTo: '/browse',
     pathMatch: 'full'
   },
   {

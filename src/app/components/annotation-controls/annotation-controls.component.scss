@@ -3,6 +3,18 @@
     margin-bottom: 12px;
 }
 
+.icon_container {
+    height: 25px;
+    width: 25px;
+    cursor: pointer;
+
+    & svg {
+        height: 100%;
+        fill: black;
+        stroke-width: 2px;
+    }
+}
+
 #tools,
 #tool_modes {
     display: flex;
@@ -14,13 +26,14 @@
         flex-direction: row;
     }
 
-    div div {
+    >div>div {
         margin-right: 4px;
         border: rgba(0, 0, 0, .3) solid 1px;
         padding: 6px;
         display: flex;
         flex-direction: row;
         align-items: center;
+
         justify-content: center;
         cursor: pointer;
 
@@ -29,4 +42,3 @@
         }
     }
 }
-
